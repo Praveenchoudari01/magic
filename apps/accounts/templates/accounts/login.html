@@ -1,0 +1,246 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login</title>
+
+  <!-- ✅ Bootstrap Icons -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+  />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden; /* ✅ No horizontal scroll */
+      background-color: #121826;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: white;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .login-container {
+      background: rgba(31, 41, 55, 0.9);
+      padding: 2rem 1.5rem;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+      overflow: hidden; /* ✅ Contain shadows */
+    }
+
+    .login-container h2 {
+      margin-bottom: 1.5rem;
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #ffffff;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"][name="password"] {
+      width: 100%;
+      padding: 0.9rem;
+      margin-bottom: 1.2rem;
+      border: 1px solid rgba(255,255,255,0.6);
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      background-color: transparent;
+      color: white;
+      transition: box-shadow 0.25s ease, background 0.25s ease;
+    }
+
+    input::placeholder { color: rgba(255,255,255,0.7); }
+
+    input:focus {
+      background: rgba(255,255,255,0.08);
+      box-shadow: 0 0 6px rgba(0,212,255,0.5);
+      color: #fff;
+    }
+
+    .input-group { position: relative; }
+        /* ✅ Fix: remove white glow when autofilled or pasted */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 1000px rgba(255,255,255,0.1) inset !important;
+      box-shadow: 0 0 0 1000px rgba(255,255,255,0.1) inset !important;
+      -webkit-text-fill-color: #ffffff !important;
+      border: 1px solid #00d4ff !important;
+      transition: background-color 5000s ease-in-out 0s;
+    }
+
+    /* ✅ Fix: same dark background + white text when text is pasted */
+    input:focus,
+    input:not(:placeholder-shown) {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+
+    .eye-icon {
+      position: absolute;
+      right: 12px;
+      top: 35%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: rgba(255,255,255,0.7);
+      font-size: 1.1rem;
+      transition: color 0.3s ease;
+    }
+
+    .eye-icon:hover { color: #00d4ff; }
+
+    .message-container {
+      height: 2.5rem;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    .error-box, .success-box {
+      padding: 0.7rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      position: absolute;
+      width: 100%;
+      top: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .error-box {
+      background: rgba(255, 0, 0, 0.15);
+      border-left: 4px solid #ff4d4d;
+      color: #ffb3b3;
+    }
+
+    .success-box {
+      background: rgba(40, 167, 69, 0.15);
+      border-left: 4px solid #28a745;
+      color: #28a745;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.9rem;
+      border: none;
+      color: white;
+      font-weight: 600;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      background-color: #4e54c8;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #5f65d9;
+    }
+
+    .forgot-password {
+      text-align: right;
+      margin-bottom: 1.2rem;
+    }
+
+    .forgot-password a {
+      color: #237e91;
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+
+    .forgot-password a:hover {
+      color: #00eaff;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 1.2rem;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* ✅ Perfect responsiveness */
+    @media (max-width: 480px) {
+      .login-container {
+        padding: 1.8rem 1.2rem;
+        border-radius: 12px;
+      }
+
+      .login-container h2 { font-size: 1.6rem; }
+      button, input { font-size: 0.95rem; }
+      .forgot-password a { font-size: 0.85rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h2>Login</h2>
+
+    <div class="message-container">
+      {% if error %}
+        <div class="error-box">
+          <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
+        </div>
+      {% endif %}
+
+      {% if success %}
+        <div id="success-message" class="success-box">
+          <i class="bi bi-check-circle-fill"></i> {{ success }}
+        </div>
+      {% endif %}
+    </div>
+    <form method="POST">
+      {% csrf_token %}
+      <input type="email" name="email" placeholder="Email" required autocomplete="mail">
+
+      <div class="input-group">
+        <input type="password" name="password" id="password" placeholder="Password" required autocomplete="current-password">
+        <i class="bi bi-eye eye-icon" id="togglePassword"></i>
+      </div>
+
+      <div class="forgot-password">
+        <a href="#">Forgot Password?</a>
+      </div>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <div class="footer">&copy; 2025 VB Group</div>
+  </div>
+
+  <script>
+    const togglePassword = document.getElementById('togglePassword');
+    const password = document.getElementById('password');
+    togglePassword.addEventListener('click', function () {
+      const isPassword = password.getAttribute('type') === 'password';
+      password.setAttribute('type', isPassword ? 'text' : 'password');
+      this.classList.toggle('bi-eye');
+      this.classList.toggle('bi-eye-slash');
+    });
+
+    const successMessage = document.getElementById('success-message');
+    if (successMessage) {
+      setTimeout(() => {
+        successMessage.style.opacity = 0;
+        setTimeout(() => successMessage.style.display = 'none', 1000);
+      }, 10000);
+    }
+  </script>
+</body>
+</html>

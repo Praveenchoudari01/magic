@@ -1,0 +1,22 @@
+# Environment files
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+.magic_env/
+.magic/
+
+# Django
+staticfiles/
+media/
+
+# IDE related
+.vscode/
+.idea/
