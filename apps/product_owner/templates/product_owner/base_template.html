@@ -1,0 +1,323 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Product Owner Dashboard{% endblock %}</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #f8faff, #eef2f9);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Navbar */
+    .navbar {
+      background: linear-gradient(90deg, #1d2e47, #1c315d);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .navbar-brand {
+      font-weight: 700;
+      font-size: 1.3rem;
+      color: #fff !important;
+      letter-spacing: 0.5px;
+    }
+
+    .navbar-brand img {
+      height: 55px;
+    }
+
+    .nav-link {
+      color: #e6eaff !important;
+      margin: 0 6px;
+      border-radius: 6px;
+      padding: 8px 14px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+    }
+
+    .navbar-nav .nav-link i {
+      margin-right: 8px;
+    }
+
+    .navbar-nav .nav-link:hover,
+    .navbar-nav .nav-link.active {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff !important;
+    }
+
+    .nav-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-left: 8px;
+      border: 2px solid #fff;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Dropdown */
+    .navbar .dropdown-menu {
+      position: absolute !important;
+      z-index: 5000 !important;
+    }
+
+    /* Mobile Drawer Styling */
+    @media (max-width: 991.98px) {
+      .navbar-collapse {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 70%;
+        max-width: 300px;
+        background-color: #1c315d;
+        box-shadow: 5px 0 15px rgba(0, 0, 0, 0.3);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 1050;
+        padding: 1rem 0;
+      }
+
+      .navbar-collapse.show {
+        transform: translateX(0);
+      }
+
+      .navbar-nav {
+        padding-top: 2rem;
+        align-items: flex-start !important;
+      }
+
+      .navbar-nav .nav-item {
+        width: 100%;
+        padding: 0 1rem;
+      }
+
+      .nav-link {
+        margin: 4px 0;
+        padding: 10px 14px;
+        width: 100%;
+        font-size: 1rem;
+      }
+
+      .navbar-nav .dropdown-menu {
+        position: static !important;
+        background-color: transparent;
+        border: none;
+        box-shadow: none;
+        padding-left: 1rem;
+      }
+
+      .navbar-nav .dropdown-menu .dropdown-item {
+        color: #e6eaff !important;
+        padding: 8px 16px;
+        border-radius: 4px;
+        transition: background 0.3s;
+      }
+
+      .navbar-nav .dropdown-menu .dropdown-item:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .navbar-backdrop {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+        display: none;
+      }
+
+      .navbar-collapse.show + .navbar-backdrop {
+        display: block;
+      }
+    }
+
+    /* Main Content */
+    .content-wrapper {
+      flex: 1;
+      padding: 1rem 0;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    .content-box {
+      border-radius: 16px;
+      padding: 1.5rem 1rem;
+      animation: fadeUp 0.6s ease;
+      overflow: visible !important;
+      position: relative;
+    }
+
+    @media (max-width: 575.98px) {
+      .content-box {
+        padding: 1rem 0.5rem;
+      }
+
+      .content-wrapper {
+        padding: 0.5rem 0;
+        padding-left: 5px;
+        padding-right: 5px;
+      }
+    }
+
+    /* Footer */
+    footer {
+      background: linear-gradient(90deg, #0d6efd, #2563eb);
+      color: #fff;
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 1rem;
+      letter-spacing: 0.5px;
+    }
+
+    footer a {
+      color: #ffd43b;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    {% if user.first_login %}
+    .nav-link,
+    .dropdown-item {
+      pointer-events: none;
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    {% endif %}
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">
+        <img src="#" alt="Logo" class="me-2">
+      </a>
+
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse"
+        data-bs-target="#navbarContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav ms-auto align-items-lg-center">
+          <li class="nav-item">
+            <a class="nav-link"
+              href="{% url 'product_owner:dashboard_home' %}">
+              <i class="bi bi-house-door"></i> Home
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link"
+              href="{% url 'product_owner:dashboard_client' %}">
+              <i class="bi bi-people"></i> Clients
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link"
+              href="{% url 'product_owner:implementer_view' %}">
+              <i class="bi bi-person-workspace"></i> Implementers
+            </a>
+          </li>
+
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="navbarProfileDropdown" role="button"
+              data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-person-circle fs-5"></i> Profile
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarProfileDropdown">
+              <li>
+                <a class="dropdown-item" href="#">
+                  <i class="bi bi-person"></i> My Profile
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item text-danger fw-bold" href="{% url 'accounts:logout' %}">
+                  <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+
+      <div class="navbar-backdrop" data-bs-toggle="collapse" data-bs-target="#navbarContent"></div>
+    </div>
+  </nav>
+
+  <div class="content-wrapper">
+    <div class="container-fluid content-box">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 <strong>VB Group</strong> | Product Owner Portal
+    <br>
+    <small>Need help? <a href="#">Contact Support</a></small>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const navbarCollapse = document.getElementById('navbarContent');
+      const backdrop = document.querySelector('.navbar-backdrop');
+
+      navbarCollapse.addEventListener('show.bs.collapse', function () {
+        document.body.style.overflow = 'hidden';
+      });
+
+      navbarCollapse.addEventListener('hide.bs.collapse', function () {
+        document.body.style.overflow = '';
+      });
+
+      backdrop.addEventListener('click', function () {
+        const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
+        if (bsCollapse) bsCollapse.hide();
+      });
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,191 @@
+{% extends 'product_owner/base_template.html' %}
+{% block title %}Client Management{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+    <!-- Page Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-0 gap-2">
+        <h2 class="fw-bold mb-2 mb-md-0"
+            style="background: linear-gradient(90deg, #0079FF, #7D3CFF, #FF007F); 
+                   -webkit-background-clip: text; 
+                   -webkit-text-fill-color: transparent;">
+            Client / SPOC Management
+        </h2>
+
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'product_owner:add_client' %}" 
+               class="btn text-white d-flex align-items-center px-3 py-2 fw-semibold"
+               style="background: linear-gradient(90deg, #0079FF, #7D3CFF, #FF007F); border: none;">
+                <i class="bi bi-person-plus"></i>&nbsp; Add Client
+            </a>
+
+            <button class="btn btn-outline-dark d-flex align-items-center px-3 py-2 fw-semibold"
+                    data-bs-toggle="modal" data-bs-target="#exportModal">
+                <i class="bi bi-download"></i>&nbsp; Export
+            </button>
+        </div>
+    </div>
+
+    <hr class="mb-0">
+
+    <!-- Scrollable Table -->
+    <div class="table-responsive mt-2">
+        <table id="clientTable" class="table table-striped align-middle w-100">
+            <thead class="table-dark">
+                <tr>
+                    <th>Sl No</th>
+                    <th>Client Name</th>
+                    <th>SPOC Name</th>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>Address</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ client.client_name }}</td>
+                    <td>{{ client.spoc_name }}</td>
+                    <td>{{ client.spoc_email }}</td>
+                    <td>{{ client.spoc_mobile }}</td>
+                    <td>{{ client.client_address }}</td>
+                    <td data-export="{{ client.is_active|yesno:'Active,Inactive' }}">
+                        {% if client.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="#" class="text-primary me-2" title="Edit">
+                            <i class="bi bi-pencil-fill fs-6"></i></a>
+                        {% if client.is_active %}
+                            <a href="#" class="text-success me-2" title="Deactivate">
+                                <i class="bi bi-toggle-on fs-5"></i>
+                            </a>
+                        {% else %}
+                            <a href="#" class="text-danger me-2" title="Activate">
+                                <i class="bi bi-toggle-off fs-5"></i>
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td class="text-center" colspan="8">No Clients Added Yet</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-3 shadow">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Export Clients</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-grid gap-2">
+            <button class="btn btn-outline-primary" id="exportCsv">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export as CSV
+            </button>
+            <button class="btn btn-outline-success" id="exportExcel">
+                <i class="bi bi-file-earmark-excel"></i> Export as Excel
+            </button>
+            <button class="btn btn-outline-danger" id="exportPdf">
+                <i class="bi bi-file-earmark-pdf"></i> Export as PDF
+            </button>
+            <button class="btn btn-outline-secondary" id="exportPrint">
+                <i class="bi bi-printer"></i> Print
+            </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DataTables CSS & JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- Buttons Extension -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    let table = $('#clientTable').DataTable({
+        scrollX: true,          // ✅ Enables horizontal scroll
+        responsive: false,      // Keeps table stable on resize
+        pageLength: 10,
+        lengthChange: false,
+        searching: true,
+        ordering: true,
+        info: true,
+        autoWidth: false,
+        language: {
+            search: "_INPUT_",
+            searchPlaceholder: "Search clients..."
+        },
+        columnDefs: [
+            { orderable: false, targets: [0, 7] }
+        ],
+        dom: '<"top d-flex justify-content-end align-items-center mb-2"f>rt<"bottom d-flex justify-content-end align-items-center mt-2"ip>',
+        buttons: [
+            { extend: 'csv', className: 'd-none', exportOptions: { columns: [0,1,2,3,4,5,6] } },
+            { extend: 'excel', className: 'd-none', exportOptions: { columns: [0,1,2,3,4,5,6] } },
+            { extend: 'pdf', className: 'd-none', exportOptions: { columns: [0,1,2,3,4,5,6] } },
+            { extend: 'print', className: 'd-none', exportOptions: { columns: [0,1,2,3,4,5,6] } }
+        ]
+    });
+
+    function closeModal() {
+        let modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+        modal.hide();
+    }
+
+    $("#exportCsv").click(() => { table.button('.buttons-csv').trigger(); closeModal(); });
+    $("#exportExcel").click(() => { table.button('.buttons-excel').trigger(); closeModal(); });
+    $("#exportPdf").click(() => { table.button('.buttons-pdf').trigger(); closeModal(); });
+    $("#exportPrint").click(() => { table.button('.buttons-print').trigger(); closeModal(); });
+});
+</script>
+
+<style>
+/* Responsive header adjustments */
+@media (max-width: 768px) {
+    h2 {
+        font-size: 1.4rem;
+    }
+    .btn {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.6rem;
+    }
+    .table td, .table th {
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        font-size: 0.8rem;
+    }
+}
+</style>
+{% endblock %}

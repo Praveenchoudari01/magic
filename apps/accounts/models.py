@@ -66,3 +66,21 @@ class User(models.Model):
 
     def check_password(self, raw_password):
         return check_password(raw_password, self.password)
+    
+class AuditTrail(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="audit_trails")
+    user_name = models.CharField(max_length=100)   # stored from session
+    role_name = models.CharField(max_length=50)    # stored from session
+    action = models.CharField(max_length=10, choices=[("login", "Login"), ("logout", "Logout")])
+    ip_address = models.CharField(max_length=50, blank=True, null=True)
+    user_agent = models.TextField(blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(null=True, blank=True)  # <--- add this
+
+    class Meta:
+        db_table = "audit_trail"
+        ordering = ["-timestamp"]
+
+    def __str__(self):
+        return f"{self.user_name} ({self.role_name}) - {self.action} at {self.timestamp}"

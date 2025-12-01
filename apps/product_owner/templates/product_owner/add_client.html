@@ -1,0 +1,90 @@
+{% extends 'product_owner/base_template.html' %}
+{% block title %}Add Client{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+    <h2 class="fw-bold mb-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+        Add Client / SPOC
+    </h2>
+
+    <form method="POST" action="{% url 'product_owner:add_client' %}" enctype="multipart/form-data" class="p-4 border rounded-3 shadow-sm bg-white">
+        {% csrf_token %}
+        <div class="row g-3">
+
+            <!-- Client Name -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">Client Name <span class="text-danger">*</span></label>
+                <input type="text" name="client_name" class="form-control border-bottom" required>
+            </div>
+
+            <!-- Client Logo -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">Client Logo <span class="text-danger">*</span></label>
+                <input type="file" id="client_logo" name="client_logo" class="form-control border-bottom" accept="image/png, image/jpeg, image/jpg, image/x-icon" required>
+            </div>
+
+            <!-- Client URLs -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">Client URLs</label>
+                <input type="url" name="client_urls" class="form-control border-bottom">
+            </div>
+
+            <!-- SPOC Name -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">SPOC Name <span class="text-danger">*</span></label>
+                <input type="text" name="spoc_name" class="form-control border-bottom" required>
+            </div>
+
+            <!-- SPOC Email -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">SPOC Email <span class="text-danger">*</span></label>
+                <input type="email" name="spoc_email" class="form-control border-bottom" required>
+            </div>
+
+            <!-- SPOC Mobile -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">SPOC Mobile <span class="text-danger">*</span></label>
+                <input type="tel" name="spoc_mobile" class="form-control border-bottom">
+            </div>
+
+            <!-- Client Address -->
+            <div class="col-12">
+                <label class="form-label">Client Address</label>
+                <textarea name="client_address" class="form-control border-bottom" rows="2"></textarea>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="mt-4 d-flex gap-3">
+            <button type="submit" 
+                    class="btn text-white px-4"
+                    style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+                Add Client
+            </button>
+            <a href="{% url 'productowner:dashboard_client' %}" class="btn btn-secondary px-4">Cancel</a>
+        </div>
+    </form>
+
+</div>
+
+<!-- Client Logo Size Validation -->
+<script>
+document.getElementById("client_logo").addEventListener("change", function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const img = new Image();
+        img.onload = function() {
+            if (this.width !== 30 || this.height !== 30) {
+                alert("Logo must be exactly 30x30 pixels.");
+                event.target.value = "";
+            }
+        };
+        img.src = URL.createObjectURL(file);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends "product_owner/base_template.html" %}
+
+{% block title %}Product Owner Dashboard{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --brand-blue: #0079FF;
+    --brand-purple: #7D3CFF;
+    --brand-pink: #FF007F;
+    --brand-gradient: linear-gradient(135deg, #0079FF, #7D3CFF, #FF007F);
+    --light-glass: rgba(255, 255, 255, 0.12);
+  }
+
+  /* Body Background */
+  body {
+    background: radial-gradient(circle at top left, rgba(0,121,255,0.25), transparent 40%),
+                radial-gradient(circle at bottom right, rgba(255,0,127,0.25), transparent 40%),
+                linear-gradient(135deg, #f7faff, #fef6ff);
+    background-attachment: fixed;
+  }
+
+  /* Main Container (glass effect) */
+  .dashboard-container {
+    background: rgba(255, 255, 255, 0);
+    backdrop-filter: blur(18px);
+    border-radius: 28px;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 15px 40px #00000000;
+    border: 1px solid rgba(255, 255, 255, 0);
+    animation: fadeIn 1s ease;
+  }
+
+  /* Welcome Card */
+  .welcome-card {
+    background: var(--brand-gradient);
+    color: #fff;
+    border-radius: 22px;
+    padding: 2.5rem;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  }
+  .welcome-card h2 {
+    font-weight: 700;
+    font-size: 2.2rem;
+  }
+
+  /* Action Cards */
+  .action-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+  .action-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.18);
+  }
+  .icon-circle {
+    width: 70px; height: 70px;
+    border-radius: 16px;
+    background: var(--brand-gradient);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-size: 2rem;
+    margin: 0 auto 1rem;
+  }
+
+  /* Gradient Button */
+  .btn-gradient {
+    background: var(--brand-gradient);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    padding: 0.6rem 1.2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  .btn-gradient:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+  }
+
+  /* Notification */
+  .alert-gradient {
+    background: var(--brand-gradient);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    padding: 1rem 1.2rem;
+    font-weight: 500;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<div class="container-fluid mt-4 dashboard-container">
+
+  <!-- Welcome -->
+  <div class="welcome-card mb-5">
+    <h2>👋 Welcome, {{ request.session.user_name }}!</h2>
+    <p class="fs-5 mb-0">You are logged in as <strong>Product Owner</strong>. Manage your organization and team from here.</p>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row g-4">
+    <div class="col-md-4">
+      <div class="action-card">
+        <div class="icon-circle"><i class="bi bi-person-plus"></i></div>
+        <h5>Create Client Admin</h5>
+        <p class="text-muted">Assign new client admins to manage</p>
+        <a href="{% url 'product_owner:dashboard_client' %}" class="btn btn-gradient btn-sm">Create Admin</a>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="action-card">
+        <div class="icon-circle"><i class="bi bi-person-workspace"></i></div>
+        <h5>Create Implementer</h5>
+        <p class="text-muted">Add implementers to handle client projects and tasks.</p>
+        <a href="{% url 'product_owner:implementer_view' %}" class="btn btn-gradient btn-sm">Add Implementer</a>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="action-card">
+        <div class="icon-circle"><i class="bi bi-broadcast-pin"></i></div>
+        <h5>Live streamings</h5>
+        <p class="text-muted">View the live streams of your organization</p>
+        <a href="#" class="btn btn-gradient btn-sm">View</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analytics / Counts -->
+  <div class="row mt-5 g-4">
+    <div class="col-md-6">
+      <div class="action-card">
+        <h5 class="fw-bold">Organization Overview</h5>
+        <hr>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item d-flex justify-content-between">Client Admins <span class="fw-bold text-success">{{ client_admin_count }}</span></li>
+          <li class="list-group-item d-flex justify-content-between">Client Users <span class="fw-bold text-info">{{ client_user_count }}</span></li>
+          <li class="list-group-item d-flex justify-content-between">Cameras <span class="fw-bold text-info">{{ camera_count }}</span></li>
+          <li class="list-group-item d-flex justify-content-between">Departments <span class="fw-bold text-info">{{ department_count }}</span></li>
+          <li class="list-group-item d-flex justify-content-between">VR Devices <span class="fw-bold text-info">{{ vr_device_count }}</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="col-md-6">
+      <div class="action-card">
+        <h5 class="fw-bold">Notifications</h5>
+        <hr>
+        <div class="alert alert-gradient mb-2" role="alert">
+          <i class="bi bi-info-circle"></i> New client registration request pending approval.
+        </div>
+        <div class="alert alert-gradient mb-2" role="alert" style="background: linear-gradient(135deg, #FF007F, #7D3CFF, #0079FF); opacity:0.85;">
+          <i class="bi bi-exclamation-triangle"></i> 2 projects are behind schedule.
+        </div>
+        <div class="alert alert-gradient" role="alert" style="background: linear-gradient(135deg, #7D3CFF, #0079FF, #FF007F); opacity:0.85;">
+          <i class="bi bi-check-circle"></i> Monthly performance report is ready to view.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
