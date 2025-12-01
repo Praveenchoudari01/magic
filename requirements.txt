@@ -3,3 +3,4 @@ django_environ-0.12.0 == pip install django-environ
 pymysql-1.1.2 == pip install pymysql
 pip install --upgrade pip setuptools wheel
 Pillow-12.0.0 == pip install Pillow
+fastapi-0.123.0 == pip install fastapi
