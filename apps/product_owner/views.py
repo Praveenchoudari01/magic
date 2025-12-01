@@ -155,7 +155,7 @@ def add_client(request):
             created_ip =  request.META.get("REMOTE_ADDR"),
             created_browser=(request.META.get("HTTP_USER_AGENT") or "").split("/")[0][:100],
             is_active=True,
-            type_id_id=2,
+            type_id_id=3,
         )
         spoc_user.client_id = client.client_id
         spoc_user.save()

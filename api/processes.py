@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 import pymysql
 
 
@@ -8,9 +8,9 @@ app = FastAPI()
 def get_connection():
     return pymysql.connect(
         host="localhost",
-        user="username",
-        password="password",
-        database="dbname",
+        user="root",
+        password="1619",
+        database="magic",
         cursorclass=pymysql.cursors.DictCursor
     )
 
@@ -97,4 +97,97 @@ def get_processes(client_id: int = Query(..., description="ID of the client")):
             
             return {"processes": result}
     finally:
+        conn.close()
+
+@app.post("/save-operator-session")
+async def save_operator_session(request: Request):
+
+    data = await request.json()
+    sessions = data.get("operator_session", [])
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        for session in sessions:
+
+            client_id = session.get("client_id")
+            operator_id = session.get("operator_id")
+
+            # ========== 1) operator_sessions INSERT ==========
+            op_sql = """
+                INSERT INTO operator_sessions
+                (session_id, operator_id, process_id, start_time, end_time,
+                 total_time, status, client_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
+
+            cursor.execute(op_sql, (
+                session["session_id"],
+                operator_id,
+                session["process_id"],
+                session["start_time"],
+                session["end_time"],
+                session["total_time"],
+                session["status"],
+                client_id
+            ))
+
+            operator_session_id = cursor.lastrowid
+
+            # ========== 2) session_steps INSERT ==========
+            for step in session["session_steps"]:
+
+                step_sql = """
+                    INSERT INTO session_steps
+                    (step_session_id, session_id, step_id, step_sr_no,
+                     started_at, ended_at, time_spent_sec, content_used, client_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+
+                cursor.execute(step_sql, (
+                    step["step_session_id"],
+                    step["session_id"],
+                    step["step_id"],
+                    step["step_sr_no"],
+                    step["started_at"],
+                    step.get("ended_at"),
+                    step.get("time_spent_sec"),
+                    "yes" if step["content_used"] else "no",
+                    client_id
+                ))
+
+                # ========== 3) session_step_content_usage INSERT ==========
+                if "session_step_content" in step:
+                    for content in step["session_step_content"]:
+
+                        content_sql = """
+                            INSERT INTO session_step_content_usage
+                            (usage_id, step_content_type, opened_at, closed_at,
+                             duration, client_id, step_session_id, step_content_id, language_id)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+
+                        cursor.execute(content_sql, (
+                            content["usage_id"],
+                            content["step_content_type"],
+                            content["opened_at"],
+                            content["closed_at"],
+                            content["duration"],
+                            client_id,
+                            step["step_session_id"],
+                            content["step_content_id"],
+                            content["language_id"]
+                        ))
+
+        conn.commit()
+
+        return {"status": "success", "message": "Operator session saved successfully"}
+
+    except Exception as e:
+        conn.rollback()
+        return {"status": "error", "message": str(e)}
+
+    finally:
+        cursor.close()
         conn.close()

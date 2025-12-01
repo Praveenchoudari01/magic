@@ -84,7 +84,7 @@ def login(request):
                     # Redirect to Product Owner dashboard
                     response = redirect(reverse("product_owner:dashboard_home"))
 
-                elif role_name == "Client":
+                elif role_name == "client":
                     # print("🔹 Redirecting to Client Admin dashboard")
                     request.session["client_name"] = user.client.client_name
                     request.session["client_id"] = user.client.client_id

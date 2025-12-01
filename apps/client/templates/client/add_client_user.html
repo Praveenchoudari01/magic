@@ -1,0 +1,87 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+<div class="container mt-5">
+
+    <!-- Page Title -->
+    <h2 class="fw-bold mb-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+        Add Client User
+    </h2>
+
+    <div class="card border-1 rounded-3 shadow-sm" style="background-color: #ffffff00;;">
+        <div class="card-body p-4">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row g-3">
+
+                    <!-- Name -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="Enter name" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g,'');" required>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" name="email" class="form-control" placeholder="Enter email" required>
+                    </div>
+
+                    <!-- Mobile -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label">Mobile <span class="text-danger">*</span></label>
+                        <input type="text" name="mobile" class="form-control" placeholder="Enter mobile"  maxlength="10" minlength="10" oninput="this.value = this.value.replace(/[^0-9]/g,'');" required>
+                    </div>
+
+                    <!-- Designation -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label">Designation <span class="text-danger">*</span></label>
+                        <input type="text" name="designation" class="form-control" placeholder="Enter designation" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g,'');" required>
+                    </div>
+
+                    <!-- Department -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label">Department <span class="text-danger">*</span></label>
+                        <select name="department_id" class="form-select" required>
+                            <option value="" selected disabled>Select Department</option>
+                            {% for dept in departments %}
+                                <option value="{{ dept.id }}">{{ dept.department_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Department Head -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label">Department Head? <span class="text-danger">*</span></label>
+                        <select name="is_department_head" class="form-select" required>
+                            <option value="" selected disabled>Yes / No</option>
+                            <option value="False" >No</option>
+                            <option value="True">Yes</option>
+                        </select>
+                    </div>
+
+                    <!-- Address -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label">Address</label>
+                        <input type="text" name="address" class="form-control" placeholder="Enter address">
+                    </div>
+
+                </div>
+
+                <!-- Buttons -->
+                <div class="mt-4 d-flex gap-3">
+                    <button type="submit" 
+                            class="btn text-white px-4"
+                            style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+                        Save User
+                    </button>
+                    <a href="{% url 'client:client_user_list' %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

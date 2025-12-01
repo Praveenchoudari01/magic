@@ -1,0 +1,219 @@
+{% extends "client/client_dashboard.html" %}
+
+{% block title %}Client Dashboard{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --brand-blue: #0079FF;
+    --brand-purple: #7D3CFF;
+    --brand-pink: #FF007F;
+    --brand-gradient: linear-gradient(135deg, #0079FF, #7D3CFF, #FF007F);
+    --light-glass: rgba(255, 255, 255, 0.12);
+  }
+
+  /* Body Background */
+  body {
+    background: radial-gradient(circle at top left, rgba(0,121,255,0.25), transparent 40%),
+                radial-gradient(circle at bottom right, rgba(255,0,127,0.25), transparent 40%),
+                linear-gradient(135deg, #f7faff, #fef6ff);
+    background-attachment: fixed;
+  }
+
+  /* Dashboard Container */
+  .dashboard-container {
+    background: rgba(255, 255, 255, 0);
+    backdrop-filter: blur(18px);
+    border-radius: 28px;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 15px 40px #00000000;
+    border: 1px solid rgba(255, 255, 255, 0);
+    animation: fadeIn 1s ease;
+  }
+
+  /* Welcome Card */
+  .welcome-card {
+    background: var(--brand-gradient);
+    color: #fff;
+    border-radius: 22px;
+    padding: 2.5rem;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  }
+  .welcome-card h2 {
+    font-weight: 700;
+    font-size: 2.2rem;
+  }
+  .welcome-card p {
+    font-size: 1.1rem;
+  }
+
+  /* Action Cards */
+  .action-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+  .action-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.18);
+  }
+  .icon-circle {
+    width: 70px; height: 70px;
+    border-radius: 16px;
+    background: var(--brand-gradient);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-size: 2rem;
+    margin: 0 auto 1rem;
+  }
+
+  /* Gradient Button */
+  .btn-gradient {
+    background: var(--brand-gradient);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    padding: 0.6rem 1.2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  .btn-gradient:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+  }
+
+  /* Notification */
+  .alert-gradient {
+    background: var(--brand-gradient);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    padding: 1rem 1.2rem;
+    font-weight: 500;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== RESPONSIVE ADJUSTMENTS ===== */
+  @media (max-width: 991.98px) {
+    .dashboard-container {
+      padding: 0.8rem 1rem;
+      border-radius: 18px;
+    }
+
+    .welcome-card {
+      padding: 1.8rem 1.2rem;
+      border-radius: 18px;
+    }
+    .welcome-card h2 {
+      font-size: 1.6rem;
+    }
+    .welcome-card p {
+      font-size: 1rem;
+    }
+
+    .icon-circle {
+      width: 55px;
+      height: 55px;
+      font-size: 1.5rem;
+    }
+
+    .action-card {
+      padding: 1.3rem 1rem;
+      border-radius: 14px;
+    }
+    .action-card h5 {
+      font-size: 1.05rem;
+      margin-top: 0.8rem;
+    }
+    .action-card p {
+      font-size: 0.9rem;
+    }
+
+    .btn-gradient {
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+    }
+
+    .alert-gradient {
+      font-size: 0.9rem;
+      padding: 0.9rem 1rem;
+    }
+
+    /* Grid: make each card full width on small screens */
+    .row.g-4 > [class*="col-"] {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .welcome-card {
+      padding: 1.5rem 1rem;
+    }
+    .welcome-card h2 {
+      font-size: 1.4rem;
+    }
+    .action-card {
+      padding: 1rem 0.8rem;
+    }
+  }
+</style>
+
+<div class="container mt-4 dashboard-container">
+
+  <!-- Welcome -->
+  <div class="welcome-card mb-5">
+    <h2>👋 Welcome, {{ request.session.user_name }}!</h2>
+    <p class="fs-5 mb-0">This is your <strong>Client Admin Dashboard</strong> home page.</p>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row g-4">
+    <div class="col-md-4 col-sm-6">
+      <div class="action-card">
+        <div class="icon-circle"><i class="bi bi-people"></i></div>
+        <h5>Manage Users</h5>
+        <p class="text-muted">View, add, and manage your Users.</p>
+        <a href="#" class="btn btn-gradient btn-sm">Go to Users</a>
+      </div>
+    </div>
+
+    <div class="col-md-4 col-sm-6">
+      <div class="action-card">
+        <div class="icon-circle"><i class="bi bi-speedometer2"></i></div>
+        <h5>Manage User-Camera</h5>
+        <p class="text-muted">View, add, and manage your User-Camera's.</p>
+        <a href="#" class="btn btn-gradient btn-sm">User-Camera</a>
+      </div>
+    </div>
+
+    <div class="col-md-4 col-sm-6">
+      <div class="action-card">
+        <div class="icon-circle"><i class="bi bi-gear"></i></div>
+        <h5>Settings</h5>
+        <p class="text-muted">Update your profile and preferences.</p>
+        <a href="#" class="btn btn-gradient btn-sm">Go to Settings</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="mt-5">
+    <div class="alert alert-dismissible fade show alert-gradient" role="alert">
+      <i class="bi bi-info-circle"></i> Don’t forget to update your profile details for better personalization.
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+    </div>
+  </div>
+</div>
+{% endblock %}
