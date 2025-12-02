@@ -6,7 +6,7 @@ from django.conf import settings
 from apps.accounts.utils import perform_logout
 from apps.product_owner.models import Client
 from apps.accounts.models import User, Type
-from apps.client.models import Department
+from apps.client.models import Department, Process, Step, StepContent
 from django.contrib import messages
 import random
 import string
@@ -249,3 +249,137 @@ def department_activate(request, pk):
     department.updated_at = timezone.now()
     department.save()
     return redirect("client:department_list")
+
+# Process Defining
+
+def processes(request):
+    # Check login
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    # Get logged-in user
+    user_id = request.session["user_id"]
+
+    # Get user's client_id directly
+    client_id = User.objects.get(user_id=user_id).client_id
+
+    # Fetch processes for this client
+    processes_list = Process.objects.filter(client_id=client_id)
+
+    context = {
+        "processes": processes_list
+    }
+
+    return render(request, "client/process/processes.html", context)
+
+# Registering the process.
+def add_process(request):
+    # Ensure user logged in
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    # Get logged-in user
+    user_id = request.session["user_id"]
+    user = User.objects.get(user_id=user_id)
+    client_id = user.client_id
+
+    if request.method == "POST":
+        process_name = request.POST.get("process_name").strip()
+        process_desc = request.POST.get("process_desc").strip()
+        est_process_time = request.POST.get("est_process_time")
+        no_of_steps = request.POST.get("no_of_steps")
+
+        # Create Process
+        Process.objects.create(
+            process_name=process_name,
+            process_desc=process_desc,
+            est_process_time=est_process_time,
+            no_of_steps=no_of_steps,
+            client_id=client_id
+        )
+
+        messages.success(request, "Process registered successfully!")
+        return redirect("client:processes")
+
+    return render(request, "client/process/process_add.html")
+
+# Adding the Step for the Process 
+def step_list(request, process_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    process = get_object_or_404(Process, pk=process_id)
+    steps = Step.objects.filter(process_id=process_id).order_by('step_id')
+
+    context = {
+        "process": process,
+        "steps": steps,
+    }
+
+    return render(request, "client/process/step_list.html", context)
+
+# Adding the step
+def add_step(request, process_id):
+    # Ensure user logged in
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    # Fetch the process
+    process = get_object_or_404(Process, process_id=process_id)
+
+    # Count existing steps for this process
+    existing_steps = Step.objects.filter(process=process).count()
+
+    # Maximum steps allowed
+    allowed_steps = process.no_of_steps
+
+    # Restriction check
+    if existing_steps >= allowed_steps:
+        messages.error(
+            request,
+            f"You have already added all {allowed_steps} steps for this process."
+        )
+        return redirect("client:steps_list", process_id=process_id)
+
+    if request.method == "POST":
+        step_name = request.POST.get("step_name").strip()
+        step_desc = request.POST.get("step_desc").strip()
+        est_step_time = request.POST.get("est_step_time")
+        step_sr_no = request.POST.get("step_sr_no")
+
+        Step.objects.create(
+            process=process,
+            step_name=step_name,
+            step_desc=step_desc,
+            est_step_time=est_step_time,
+            step_sr_no=step_sr_no,
+            is_active=True
+        )
+
+        messages.success(request, "Step added successfully!")
+        return redirect("client:step_list", process_id=process_id)
+
+    remaining_steps = allowed_steps - existing_steps
+
+    return render(request, "client/process/add_step.html", {
+        "process": process,
+        "remaining_steps": remaining_steps,
+        "allowed_steps": allowed_steps,
+        "existing_steps": existing_steps,
+    })
+
+#Step_content
+def step_contents(request, step_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    step = get_object_or_404(Step, step_id=step_id)
+
+    # Load all contents for this step
+    contents = StepContent.objects.filter(step=step)
+
+    return render(request, "client/process/step_content.html", {
+        "step": step,
+        "contents": contents
+    })
+

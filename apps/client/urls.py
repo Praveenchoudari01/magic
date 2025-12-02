@@ -19,4 +19,12 @@ urlpatterns = [
     path('users/update/<int:pk>/', views.user_update, name='user_update'),
     path('users/activate/<int:pk>/', views.user_activate, name='user_activate'),
     path('users/deactivate/<int:pk>/', views.user_deactivate, name='user_deactivate'),
+
+    #Processes
+    path('processes/', views.processes, name='processes'),
+    path('processes/add/', views.add_process, name='add_process'),
+    path('process/<int:process_id>/steps/', views.step_list, name='step_list'),
+    path('process/<int:process_id>/steps/add/', views.add_step, name='add_step'),
+    path("step/<int:step_id>/contents/", views.step_contents, name="step_contents"),
+
 ]

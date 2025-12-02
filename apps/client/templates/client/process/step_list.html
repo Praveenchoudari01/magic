@@ -1,0 +1,174 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-5">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'client:processes' %}">Processes</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ process.process_name }} Steps</li>
+    </ol>
+  </nav>
+
+  <!-- Page Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2 header-responsive">
+    <h2 class="fw-bold mb-0">{{ process.process_name }} Steps</h2>
+
+    <div class="d-flex flex-wrap gap-2 action-buttons">
+      <a href="{% url 'client:add_step' process.process_id %}" 
+         class="btn text-white d-flex align-items-center justify-content-center px-3 py-2"
+         style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+        <i class="bi bi-plus-lg"></i>&nbsp;Add Step
+      </a>
+
+      <button class="btn btn-outline-dark d-flex align-items-center justify-content-center px-3 py-2"
+              data-bs-toggle="modal" data-bs-target="#exportModal">
+        <i class="bi bi-download"></i>&nbsp;Export
+      </button>
+    </div>
+  </div>
+
+  <hr class="mb-0">
+
+  <!-- Step Table -->
+  <div class="table-responsive mt-2">
+    <table id="stepTable" class="table table-striped align-middle w-100">
+      <thead class="table-dark">
+        <tr>
+          <th>Sl No</th>
+          <th>Step Name</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for step in steps %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>
+            <a href="{% url 'client:step_contents' step.step_id %}" class="text-primary fw-bold">
+                {{ step.step_name }}
+            </a>
+          </td>
+          <td>{{ step.step_desc }}</td>
+          <td data-export="{{ step.is_active|yesno:'Active,Inactive' }}">
+            {% if step.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-danger">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="#" class="text-primary me-2" title="Edit">
+              <i class="bi bi-pencil-fill fs-6"></i></a>
+            {% if step.is_active %}
+              <a href="#" class="text-success me-2" title="Deactivate">
+                <i class="bi bi-toggle-on fs-5"></i>
+              </a>
+            {% else %}
+              <a href="#" class="text-danger me-2" title="Activate">
+                <i class="bi bi-toggle-off fs-5"></i>
+              </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center py-3">No steps added for this process.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-3 shadow">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Export Steps</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-primary" id="exportCsv">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Export as CSV
+          </button>
+          <button class="btn btn-outline-success" id="exportExcel">
+            <i class="bi bi-file-earmark-excel"></i> Export as Excel
+          </button>
+          <button class="btn btn-outline-danger" id="exportPdf">
+            <i class="bi bi-file-earmark-pdf"></i> Export as PDF
+          </button>
+          <button class="btn btn-outline-secondary" id="exportPrint">
+            <i class="bi bi-printer"></i> Print
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DataTables CSS & JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- Buttons Extension -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+<script>
+$(document).ready(function() {
+  const table = $('#stepTable').DataTable({
+    scrollX: true,
+    responsive: false,
+    pageLength: 10,
+    lengthChange: false,
+    searching: true,
+    ordering: true,
+    info: true,
+    autoWidth: false,
+    language: { search: "_INPUT_", searchPlaceholder: "Search steps..." },
+    columnDefs: [{ orderable: false, targets: [0, 4] }],
+    dom: '<"top d-flex justify-content-end align-items-center mb-2"f>rt<"bottom d-flex justify-content-end align-items-center mt-2"ip>',
+    buttons: [
+      { extend: 'csv', className: 'd-none', exportOptions: { columns: [0,1,2,3] } },
+      { extend: 'excel', className: 'd-none', exportOptions: { columns: [0,1,2,3] } },
+      { extend: 'pdf', className: 'd-none', exportOptions: { columns: [0,1,2,3] } },
+      { extend: 'print', className: 'd-none', exportOptions: { columns: [0,1,2,3] } }
+    ]
+  });
+
+  function closeModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    modal.hide();
+  }
+
+  $("#exportCsv").click(() => { table.button('.buttons-csv').trigger(); closeModal(); });
+  $("#exportExcel").click(() => { table.button('.buttons-excel').trigger(); closeModal(); });
+  $("#exportPdf").click(() => { table.button('.buttons-pdf').trigger(); closeModal(); });
+  $("#exportPrint").click(() => { table.button('.buttons-print').trigger(); closeModal(); });
+});
+</script>
+
+<style>
+@media (max-width: 768px) {
+  .header-responsive { flex-direction: column !important; align-items: flex-start !important; }
+  .action-buttons button, .action-buttons a { width: auto !important; font-size: 0.85rem; padding: 0.5rem 0.75rem; }
+  h2 { font-size: 1.4rem; }
+  .table td, .table th { font-size: 0.85rem; white-space: nowrap; }
+}
+</style>
+
+{% endblock %}

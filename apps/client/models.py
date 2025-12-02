@@ -63,6 +63,7 @@ class Process(models.Model):
         'product_owner.Client',
         on_delete=models.CASCADE
     )
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'processes'
@@ -84,6 +85,7 @@ class Step(models.Model):
     step_desc = models.CharField(max_length=255)
     est_step_time = models.IntegerField()
     step_sr_no = models.IntegerField()
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'steps'
@@ -115,6 +117,7 @@ class StepContent(models.Model):
         max_length=20,
         choices=CONTENT_TYPES
     )
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'step_contents'
@@ -139,6 +142,7 @@ class StepContentDetail(models.Model):
 
     # can store duration (for audio/video) or page count (pdf/text)
     duration_or_no_pages = models.IntegerField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'step_content_details'
@@ -167,6 +171,7 @@ class StepContentVoiceOver(models.Model):
     )
 
     file_url = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'step_content_voice_over'
@@ -195,6 +200,7 @@ class StepContentCaptions(models.Model):
         max_length=10,
         choices=CAPTION_FILE_TYPES
     )
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'step_content_captions'

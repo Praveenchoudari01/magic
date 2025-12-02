@@ -1,0 +1,58 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-5">
+
+    <h3 class="fw-bold mb-3">
+        Add Step for: 
+        <span style="color:#3f51b5;">{{ process.process_name }}</span>
+    </h3>
+
+    <p>
+        <strong>Allowed Steps:</strong> {{ allowed_steps }} |
+        <strong>Added:</strong> {{ existing_steps }} |
+        <strong>Remaining:</strong> {{ remaining_steps }}
+    </p>
+
+    {% if remaining_steps <= 0 %}
+        <div class="alert alert-danger">
+            You cannot add more steps for this process.
+        </div>
+    {% else %}
+
+    <div class="card shadow p-4">
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label">Step Name</label>
+                <input type="text" name="step_name" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Step Description</label>
+                <textarea name="step_desc" class="form-control" rows="3" required></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Estimated Step Time (seconds)</label>
+                <input type="number" name="est_step_time" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Step Serial Number</label>
+                <input type="number" name="step_sr_no" class="form-control" required>
+            </div>
+
+            <button class="btn btn-primary px-4">Save Step</button>
+            <a href="{% url 'client:step_list' process.process_id %}" class="btn btn-secondary ms-2">Back</a>
+
+        </form>
+
+    </div>
+
+    {% endif %}
+</div>
+
+{% endblock %}

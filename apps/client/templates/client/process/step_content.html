@@ -1,0 +1,38 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+    <h3 class="fw-bold">
+        Step Contents — <span class="text-primary">{{ step.step_name }}</span>
+    </h3>
+
+    <hr>
+
+    {% if contents %}
+        <table class="table table-bordered align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Sl No</th>
+                    <th>Content Title</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for c in contents %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ c.title }}</td>
+                    <td>{{ c.description }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="text-muted">No content added for this step yet.</p>
+    {% endif %}
+
+</div>
+
+{% endblock %}
