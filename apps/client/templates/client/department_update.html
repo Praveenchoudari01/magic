@@ -1,0 +1,53 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+<div class="container mt-5">
+
+    <!-- Page Title -->
+    <h2 class="fw-bold mb-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+        Update Department
+    </h2>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <!-- Department Name -->
+                <div class="mb-3">
+                    <label for="department_name" class="form-label">Department Name <span class="text-danger">*</span></label>
+                    <input type="text" 
+                           name="department_name" 
+                           id="department_name" 
+                           class="form-control" 
+                           value="{{ department.department_name }}" 
+                           required>
+                </div>
+
+                <!-- Department Description -->
+                <div class="mb-3">
+                    <label for="department_description" class="form-label">Description</label>
+                    <textarea name="department_description" 
+                              id="department_description" 
+                              rows="2" 
+                              class="form-control">{{ department.department_description }}</textarea>
+                </div>
+
+                <!-- Buttons -->
+                <div class="mt-4 d-flex gap-3">
+                    <button type="submit" 
+                            class="btn text-white px-4"
+                            style="background: linear-gradient(90deg, #e91e63, #3f51b5); border:none;">
+                        Update
+                    </button>
+                    <a href="{% url 'client:department_list' %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

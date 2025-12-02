@@ -1,0 +1,79 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+<div class="container mt-5">
+
+    <!-- Page Title -->
+    <h2 class="fw-bold mb-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+        Update User
+    </h2>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row g-3">
+
+                    <!-- Name -->
+                    <div class="col-md-4">
+                        <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="name" value="{{ user.name }}" class="form-control" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g,'');" required>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="col-md-4">
+                        <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" name="email" id="email" value="{{ user.email }}" class="form-control" required>
+                    </div>
+
+                    <!-- Mobile -->
+                    <div class="col-md-4">
+                        <label for="mobile" class="form-label">Mobile</label>
+                        <input type="text" name="mobile" id="mobile" value="{{ user.mobile }}" maxlength="10" minlength="10" oninput="this.value = this.value.replace(/[^0-9]/g,'');"class="form-control">
+                    </div>
+
+                    <!-- Address -->
+                    <div class="col-md-4">
+                        <label for="address" class="form-label">Address</label>
+                        <input type="text" name="address" id="address" value="{{ user.address }}" class="form-control">
+                    </div>
+
+                    <!-- Department Head -->
+                    <div class="col-md-4">
+                        <label for="is_department_head" class="form-label">Department Head?</label>
+                        <select name="is_department_head" id="is_department_head" class="form-select">
+                            <option value="False" {% if not user.is_department_head %}selected{% endif %}>No</option>
+                            <option value="True" {% if user.is_department_head %}selected{% endif %}>Yes</option>
+                        </select>
+                    </div>
+
+                    <!-- Department -->
+                    <div class="col-md-4">
+                        <label for="department_id" class="form-label">Department</label>
+                        <select name="department_id" id="department_id" class="form-select">
+                            {% for dept in departments %}
+                                <option value="{{ dept.id }}" {% if user.department and user.department.id == dept.id %}selected{% endif %}>{{ dept.department_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                </div>
+
+                <!-- Buttons -->
+                <div class="mt-4 d-flex gap-3">
+                    <button type="submit" 
+                            class="btn text-white px-4"
+                            style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+                        Update
+                    </button>
+                    <a href="{% url 'client:client_user_list' %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

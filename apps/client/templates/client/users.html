@@ -13,10 +13,10 @@
     </h2>
 
     <div class="d-flex flex-wrap gap-2 action-buttons">
-      <a href="#" 
+      <a href="{% url 'client:user_add' %}" 
          class="btn text-white d-flex align-items-center justify-content-center px-3 py-2"
          style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none; width: auto;">
-        <i class="bi bi-person-plus-fill"></i>&nbsp;Add User
+        <i class="bi bi-person-plus-fill"></i>&nbsp;Add Operator
       </a>
       <button class="btn btn-outline-dark d-flex align-items-center justify-content-center px-3 py-2"
               data-bs-toggle="modal" data-bs-target="#exportModal" style="width: auto;">
@@ -65,14 +65,14 @@
             {% endif %}
           </td>
           <td>
-            <a href="#" class="text-primary me-2" title="Edit">
+            <a href="{% url 'client:user_update' user.user_id %}" class="text-primary me-2" title="Edit">
               <i class="bi bi-pencil-fill fs-6"></i></a>
             {% if user.is_active %}
-              <a href="#" class="text-success me-2" title="Deactivate">
+              <a href="{% url 'client:user_deactivate' user.user_id %}" class="text-success me-2" title="Deactivate">
                 <i class="bi bi-toggle-on fs-5"></i>
               </a>
             {% else %}
-              <a href="#" class="text-danger me-2" title="Activate">
+              <a href="{% url 'client:user_activate' user.user_id %}" class="text-danger me-2" title="Activate">
                 <i class="bi bi-toggle-off fs-5"></i>
               </a>
             {% endif %}

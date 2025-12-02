@@ -1,0 +1,61 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-sm p-4">
+
+        <!-- Page Title -->
+        <h2 class="mb-4 fw-bold"
+            style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+                   -webkit-background-clip: text;
+                   -webkit-text-fill-color: transparent;">
+            Add Department
+        </h2>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-4">
+                <!-- Department Name -->
+                <div class="col-md-6">
+                    <label for="department_name" class="form-label">
+                        Department Name <span class="text-danger fw-bold">*</span>
+                    </label>
+                    <input type="text" 
+                           class="form-control" 
+                           id="department_name" 
+                           name="department_name" 
+                           placeholder="Enter department name" 
+                           required>
+                    {% if error %}
+                        <small class="alert-danger">{{ error }}</small>
+                    {% endif %}
+                </div>
+
+
+                <!-- Department Description -->
+                <div class="col-md-6">
+                    <label for="department_description" class="form-label">
+                        Description <span class="text-danger fw-bold">*</span>
+                    </label>
+                    <textarea class="form-control" 
+                              id="department_description" 
+                              name="department_description" 
+                              rows="1" 
+                              placeholder="Enter description"></textarea>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="mt-4 d-flex gap-3">
+                <button type="submit" 
+                        class="btn text-white px-4"
+                        style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+                    Add Department
+                </button>
+                <a href="{% url 'client:department_list' %}" class="btn btn-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
