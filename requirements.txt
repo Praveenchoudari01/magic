@@ -6,12 +6,20 @@ Pillow-12.0.0 == pip install Pillow
 fastapi-0.123.0 == pip install fastapi
 python_jose-3.5.0 == pip install python-jose
 httpagentparser-1.9.5 == pip install httpagentparser
+paho-mqtt-2.1.0 == pip install paho-mqtt
 
 
 
 # To run API's
 cd api
-uvicorn processes:app --reload --host 127.0.0.1 --port 9091 --reload
+uvicorn api.processes:app --reload --host 127.0.0.1 --port 9091 --reload
+
+#To test get/Operators API in postman
+Method = GET
+URL = http://127.0.0.1:9091/operators
+Headers (client-id = 1, device-id = 1)
+
+
 
 #To run Application
 python manage.py runserver 127.0.0.1:9090

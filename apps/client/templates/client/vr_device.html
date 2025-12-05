@@ -1,0 +1,276 @@
+{% extends "client/client_dashboard.html" %}
+{% block title %}VR Device List{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+  <!-- Responsive Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-0 gap-2 header-section">
+    <h2 class="fw-bold mb-0"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+      VR Device
+    </h2>
+
+    <!-- Buttons Section -->
+    <div class="d-flex gap-2 flex-wrap action-buttons">
+      <a href="{% url 'client:vr_device_register_view' %}" 
+         class="btn text-white d-flex align-items-center justify-content-center px-3 py-2"
+         style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+          <i class="bi bi-headset-vr"></i>&nbsp;Add VR Device
+      </a>
+
+      <button class="btn btn-outline-dark d-flex align-items-center justify-content-center px-3 py-2"
+              data-bs-toggle="modal" data-bs-target="#exportModal">
+          <i class="bi bi-download"></i>&nbsp;Export
+      </button>
+    </div>
+  </div>
+
+  <hr class="mb-0">
+
+  <!-- VR Device Table -->
+  <div class="table-container mt-2">
+    <table id="vrDeviceTable" class="table table-striped shadow-sm align-middle mb-0 w-100">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Device Name</th>
+          <th>Unique Code</th>
+          <th>Model</th>
+          <th>Make</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for device in devices %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ device.device_name }}</td>
+          <td>{{ device.unique_id }}</td>
+          <td>{{ device.device_model }}</td>
+          <td>{{ device.device_make }}</td>
+          <td data-export="{{ device.is_active|yesno:'Active,Inactive' }}">
+            {% if device.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="action-column d-flex align-items-center justify-content-start gap-2">
+              <a href="#" class="text-primary" title="Edit Device">
+                <i class="bi bi-pencil-fill fs-6"></i>
+              </a>
+              {% if device.is_active %}
+                <a href="#" class="text-success" title="Deactivate Device">
+                  <i class="bi bi-toggle-on fs-5"></i>
+                </a>
+              {% else %}
+                <a href="#" class="text-danger" title="Activate Device">
+                  <i class="bi bi-toggle-off fs-5"></i>
+                </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center py-3">No VR devices registered yet</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-3 shadow">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Export VR Devices</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-primary" id="exportCsv"><i class="bi bi-file-earmark-spreadsheet"></i> Export as CSV</button>
+          <button class="btn btn-outline-success" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> Export as Excel</button>
+          <button class="btn btn-outline-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Export as PDF</button>
+          <button class="btn btn-outline-secondary" id="exportPrint"><i class="bi bi-printer"></i> Print</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DataTables CSS & JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- Buttons Extension -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+<style>
+/* --- Responsive Header Styling --- */
+@media (max-width: 768px) {
+  .header-section {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .header-section h2 {
+    font-size: 1.4rem;
+    margin-bottom: 0.6rem;
+  }
+  .table td, .table th {
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    width: 100%;
+  }
+
+  .action-buttons .btn {
+    flex: 0 0 auto;
+    width: auto !important;
+    font-size: 0.9rem;
+    padding: 0.5rem 0.8rem;
+  }
+}
+
+/* --- Table Action Column --- */
+.action-column {
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  gap: 0.5rem;
+}
+
+/* --- Table Scroll for Small Screens --- */
+.table-container {
+  overflow-x: auto;
+}
+
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_paginate {
+    font-size: 0.8rem;
+    margin-right: 5px;
+}
+.action-column a {
+  text-decoration: none;
+}
+
+.action-column i {
+  transition: transform 0.2s ease;
+}
+
+.action-column i:hover {
+  transform: scale(1.1);
+}
+</style>
+
+<script>
+$(document).ready(function() {
+  let table = $('#vrDeviceTable').DataTable({
+    pageLength: 10,
+    lengthChange: false,
+    searching: true,
+    ordering: true,
+    info: true,
+    autoWidth: false,
+    scrollX: true,
+    columnDefs: [
+      { orderable: false, targets: [0, 6] }
+    ],
+    language: {
+      search: "_INPUT_",
+      searchPlaceholder: "Search VR devices..."
+    },
+    // Search & pagination right-aligned
+    dom: '<"top d-flex justify-content-end align-items-center mb-2"f>rt<"bottom d-flex justify-content-end align-items-center mt-2"ip>',
+    buttons: [
+      {
+        extend: 'csv',
+        title: 'vr_devices',
+        className: 'd-none',
+        exportOptions: {
+          columns: [0,1,2,3,4,5],
+          format: { body: exportFormatter }
+        }
+      },
+      {
+        extend: 'excel',
+        title: 'vr_devices',
+        className: 'd-none',
+        exportOptions: {
+          columns: [0,1,2,3,4,5],
+          format: { body: exportFormatter }
+        }
+      },
+      {
+        extend: 'pdf',
+        title: 'vr_devices',
+        className: 'd-none',
+        exportOptions: {
+          columns: [0,1,2,3,4,5],
+          format: { body: exportFormatter }
+        }
+      },
+      {
+        extend: 'print',
+        title: 'vr_devices',
+        className: 'd-none',
+        exportOptions: {
+          columns: [0,1,2,3,4,5],
+          format: { body: exportFormatter }
+        }
+      }
+    ]
+  });
+
+  function exportFormatter(data, row, column, node) {
+    let exportVal = $(node).attr("data-export");
+    return exportVal ? exportVal : data.replace(/<[^>]*>/g, '');
+  }
+
+  function closeModal() {
+    let modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    modal.hide();
+  }
+
+  $("#exportCsv").on("click", function() {
+    table.button('.buttons-csv').trigger();
+    closeModal();
+  });
+  $("#exportExcel").on("click", function() {
+    table.button('.buttons-excel').trigger();
+    closeModal();
+  });
+  $("#exportPdf").on("click", function() {
+    table.button('.buttons-pdf').trigger();
+    closeModal();
+  });
+  $("#exportPrint").on("click", function() {
+    table.button('.buttons-print').trigger();
+    closeModal();
+  });
+});
+</script>
+
+{% endblock %}

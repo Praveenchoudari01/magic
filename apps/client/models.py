@@ -136,7 +136,7 @@ class StepContentDetail(models.Model):
     )
 
     # language_id is unique
-    language_id = models.IntegerField(unique=True)
+    language_id = models.CharField(max_length=10)
 
     file_url = models.CharField(max_length=255)
 
@@ -171,6 +171,8 @@ class StepContentVoiceOver(models.Model):
     )
 
     file_url = models.CharField(max_length=255)
+    language_id = models.CharField(max_length=10)
+    language = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -184,7 +186,7 @@ class StepContentCaptions(models.Model):
 
     # FK to StepContentVoiceOver
     step_content_voice_over = models.ForeignKey(
-        'client.StepContentVoiceOver',
+        'client.StepContentDetail',
         on_delete=models.CASCADE,
         related_name='captions'
     )

@@ -20,6 +20,10 @@ urlpatterns = [
     path('users/activate/<int:pk>/', views.user_activate, name='user_activate'),
     path('users/deactivate/<int:pk>/', views.user_deactivate, name='user_deactivate'),
 
+    #VR Device Registration
+    path('vr-devices/', views.vr_device_list_view, name='vr_device_list_view'),
+    path('vr-devices/register/', views.vr_device_register_view, name='vr_device_register_view'),
+
     #Processes
     path('processes/', views.processes, name='processes'),
     path('processes/add/', views.add_process, name='add_process'),

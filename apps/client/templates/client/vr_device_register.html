@@ -1,0 +1,63 @@
+{% extends "client/client_dashboard.html" %}
+{% block title %}Register VR Device{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+    <!-- Page Title -->
+    <h2 class="fw-bold mb-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+        Register VR Device
+    </h2>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post" class="row g-3" id="vr-device-form">
+                {% csrf_token %}
+
+                <!-- Device Name -->
+                <div class="col-md-4">
+                    <label class="form-label">Device Name <span class="text-danger fw-bold">*</span></label>
+                    <input type="text" name="device_name" class="form-control" required>
+                    {% if errors.device_name %}
+                        <div class="text-danger">{{ errors.device_name }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Unique Code -->
+                <div class="col-md-4">
+                    <label class="form-label">Unique Code <span class="text-danger fw-bold">*</span></label>
+                    <input type="text" name="unique_code" class="form-control" required>
+                </div>
+
+                <!-- Device Model -->
+                <div class="col-md-4">
+                    <label class="form-label">Device Model <span class="text-danger fw-bold">*</span></label>
+                    <input type="text" name="device_model" class="form-control" required>
+                </div>
+
+                <!-- Device Make -->
+                <div class="col-md-4">
+                    <label class="form-label">Device Make <span class="text-danger fw-bold">*</span></label>
+                    <input type="text" name="device_make" class="form-control" required>
+                </div>
+
+                <!-- Buttons -->
+                <div class="col-12 mt-4 d-flex gap-3">
+                    <button type="submit" 
+                            class="btn text-white px-4"
+                            style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+                        Register
+                    </button>
+                    <a href="{% url 'client:vr_device_list_view' %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

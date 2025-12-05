@@ -6,7 +6,7 @@ from django.conf import settings
 from apps.accounts.utils import perform_logout
 from apps.product_owner.models import Client
 from apps.accounts.models import User, Type
-from apps.client.models import Department, Process, Step, StepContent
+from apps.client.models import Department, VRDevice, Process, Step, StepContent
 from django.contrib import messages
 import random
 import string
@@ -16,6 +16,9 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from datetime import datetime
 import httpagentparser
+import paho.mqtt.client as mqtt
+import json
+import time
 
 
 # Create your views here.
@@ -250,8 +253,122 @@ def department_activate(request, pk):
     department.save()
     return redirect("client:department_list")
 
-# Process Defining
+# VR device Registration
+# MQTT Publisher
+def publish_mqtt_message(topic, payload):
+    broker = "broker.hivemq.com"
+    port = 1883
 
+    try:
+        client = mqtt.Client(callback_api_version=2)  # Updated API
+        client.connect(broker, port, 60)
+        client.loop_start()  # start network loop BEFORE publishing
+
+        message = json.dumps(payload)
+        result = client.publish(topic, message, qos=1)  # QoS 1 ensures delivery
+        result.wait_for_publish()  # Wait until message is sent
+
+        print("📤 Message published successfully")
+        time.sleep(0.5)  # Small delay to ensure delivery
+        client.loop_stop()
+        client.disconnect()
+
+    except Exception as e:
+        print(f"❌ MQTT publish error: {e}")
+
+#Vr_Device
+# VR Device List View
+def vr_device_list_view(request):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('accounts:login')
+
+    try:
+        user = User.objects.get(pk=user_id)
+        client = user.client
+        # print("client id is ",client)
+    except (User.DoesNotExist, Client.DoesNotExist):
+        print("User or client not found.")
+        messages.error(request, "User or client not found.")
+        return redirect('client:client_home')
+
+    devices = VRDevice.objects.filter(client=client).order_by('-created_at')
+    return render(request, 'client/vr_device.html', {'devices': devices})
+
+
+# VR Device Registration View
+def vr_device_register_view(request):
+    errors = {}
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('accounts:login')
+
+    try:
+        user = User.objects.get(pk=user_id)
+        client = user.client
+
+    except (User.DoesNotExist, Client.DoesNotExist):
+        messages.error(request, "User or client not found.")
+        return redirect('client:client_home')
+
+    if request.method == 'POST':
+        device_name = request.POST.get('device_name')
+        unique_code = request.POST.get('unique_code')
+        device_model = request.POST.get('device_model')
+        device_make = request.POST.get('device_make')
+
+        # Validation
+        if VRDevice.objects.filter(unique_id=unique_code).exists():
+            errors['unique_code'] = "This unique code already exists. Please get a new code."
+        if VRDevice.objects.filter(device_name=device_name, client=client).exists():
+            errors['device_name'] = "Device name already exists for this client."
+
+        # Save VRDevice if no errors
+        if not errors:
+            vrdevice = VRDevice.objects.create(
+                device_name=device_name,
+                unique_id=unique_code,
+                device_model=device_model,
+                device_make=device_make,
+                client=client,
+                created_by=user,
+                updated_by=user,
+                created_ip=get_client_ip(request),
+                created_browser=(request.META.get('HTTP_USER_AGENT') or '').split('/')[0][:100],
+            )
+            
+            client_name = client.client_name
+            client_id = client.client_id
+            payload = {
+                "status": "success",
+                "message": "Device registered successfully",
+                "device_id": vrdevice.device_id,
+                "device_name": vrdevice.device_name,
+                "unique_code" : vrdevice.unique_id,
+                "client_id": client_id,
+                "client_name": client_name
+            }
+            code = vrdevice.unique_id
+            topic = f"magic/vr_devices/register/{code}"  # include unique code in topic
+            publish_mqtt_message(topic, payload)
+            vrdevice.save()
+            messages.success(request, "VR Device registered successfully!")
+            return redirect('client:vr_device_list_view')
+
+    return render(request, 'client/vr_device_register.html', {
+        'errors': errors
+    })
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+# Process Defining
 def processes(request):
     # Check login
     if "user_id" not in request.session:
