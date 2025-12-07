@@ -16,6 +16,9 @@ class HeaderAuthMiddleware(BaseHTTPMiddleware):
         client_id = request.headers.get("client-id")
         device_id = request.headers.get("device-id")
 
+        if request.url.path == "/validate-code":
+            return await call_next(request)
+
         # print("client and device id from the middleware")
         # print(client_id)
         # print(device_id)
