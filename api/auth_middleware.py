@@ -1,29 +1,35 @@
 import re
-from fastapi import Request, Response
+import hmac
+import hashlib
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from .db import get_connection# your db connection function
-
+from .db import get_connection  # your DB connection function
 
 # Only allow simple numeric values to avoid SQL injection
 SAFE_HEADER_REGEX = re.compile(r"^[0-9]+$")
+
+# Global static secret key (same for all devices)
+GLOBAL_DEVICE_SECRET = "MY_STATIC_SECRET_2025"
+
+# Paths that don't require auth
+OPEN_PATHS = {"/validate-code"}
 
 class HeaderAuthMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
 
+        # Skip auth for certain paths
+        if request.url.path in OPEN_PATHS:
+            return await call_next(request)
+
         # Extract headers
         client_id = request.headers.get("client-id")
         device_id = request.headers.get("device-id")
+        signature = request.headers.get("signature")
 
-        if request.url.path == "/validate-code":
-            return await call_next(request)
-
-        # print("client and device id from the middleware")
-        # print(client_id)
-        # print(device_id)
         # Check missing headers
-        if not client_id or not device_id:
+        if not client_id or not device_id or not signature:
             return JSONResponse(
                 status_code=401,
                 content={"status": "unauthorized", "message": "Missing authentication headers"}
@@ -36,7 +42,22 @@ class HeaderAuthMiddleware(BaseHTTPMiddleware):
                 content={"status": "unauthorized", "message": "Invalid header format"}
             )
 
-        # Validate in database
+        # HMAC signature validation
+        message = f"{client_id}{device_id}"
+        server_signature = hmac.new(
+            GLOBAL_DEVICE_SECRET.encode(),
+            message.encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+        # Use secure compare to prevent timing attacks
+        if not hmac.compare_digest(server_signature, signature):
+            return JSONResponse(
+                status_code=401,
+                content={"status": "unauthorized", "message": "Invalid signature"}
+            )
+
+        # Optional: Validate in database
         try:
             db = get_connection()
             cursor = db.cursor()
@@ -59,7 +80,7 @@ class HeaderAuthMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             return JSONResponse(
                 status_code=500,
-                content={"status": "error", "message": str(e)}
+                content={"status": "error", "message": "Internal server error"}
             )
 
         # All checks passed → allow endpoint execution
