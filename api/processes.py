@@ -1,21 +1,38 @@
 from fastapi import FastAPI, Query, Request, Header, HTTPException
 from .db import get_connection
 from .auth_middleware import HeaderAuthMiddleware
+import hmac
+import hashlib
+
 
 app = FastAPI()
 
 app.add_middleware(HeaderAuthMiddleware)
 
-#Get Operators 
+GLOBAL_DEVICE_SECRET = "MY_STATIC_SECRET_2025"
+
+def verify_signature(client_id, device_id, incoming_signature):
+    message = f"{client_id}{device_id}"
+    server_signature = hmac.new(
+        GLOBAL_DEVICE_SECRET.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(server_signature, incoming_signature)
+
+# Get Operators 
 @app.get("/operators")
 def get_operators(
     client_id: int = Header(..., alias="client-id"),
-    device_id: int = Header(..., alias="device-id")
+    device_id: int = Header(..., alias="device-id"),
+    signature: str = Header(..., alias="signature")
 ):
-    try:
-        print("Received client_id:", client_id)
-        print("Received device_id:", device_id)
+    # 1. Validate HMAC signature
+    if not verify_signature(client_id, device_id, signature):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
+    try:
         db = get_connection()
         cursor = db.cursor()
 
@@ -28,13 +45,9 @@ def get_operators(
             FROM user
             WHERE client_id = %s AND type_id_id = 4
         """
-        
-        # print("Running query:", query % client_id)
 
         cursor.execute(query, (client_id,))
         rows = cursor.fetchall()
-
-        # print("Fetched rows:", rows)
 
         operators = []
         for r in rows:
@@ -43,20 +56,23 @@ def get_operators(
                 "opertor_name": r["name"],
                 "operator_email": r["email"],
                 "operator_mobile": r["mobile"],
-                "clien_id" : client_id
+                "clien_id": client_id
             })
 
         return {"status": "success", "operators": operators}
 
     except Exception as e:
-        # print("REAL ERROR:", repr(e))   # <-- THIS SHOWS THE ACTUAL ERROR
         return {"status": "error", "message": repr(e)}
 
 @app.get("/processes")
 def get_processes(
     client_id: int = Header(..., alias="client-id"),
-    device_id: int = Header(..., alias="device-id")
+    device_id: int = Header(..., alias="device-id"),
+    signature: str = Header(..., alias="signature")
 ):
+    if not verify_signature(client_id, device_id, signature):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
     try:
         # print("Received client_id:", client_id)
         # print("Received device_id:", device_id)
@@ -206,8 +222,12 @@ def get_processes(
 async def receive_session_data(
     request: Request,
     client_id: str = Header(...),
-    device_id: str = Header(...)
+    device_id: str = Header(...),
+    signature: str = Header(..., alias="signature")
 ):
+    if not verify_signature(client_id, device_id, signature):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
     try:
         # Read JSON body
         payload = await request.json()
@@ -217,84 +237,84 @@ async def receive_session_data(
         conn = get_connection()
         cursor = conn.cursor()
 
-        for session in operator_session_list:
+        # for session in operator_session_list:
 
-            # ---------------------------------------
-            # 1️⃣ Insert into operator_sessions table
-            # ---------------------------------------
-            insert_operator_session = """
-                INSERT INTO operator_sessions 
-                (session_id, operator_id, client_id, process_id, 
-                start_time, end_time, total_time, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """
+        #     # ---------------------------------------
+        #     # 1️⃣ Insert into operator_sessions table
+        #     # ---------------------------------------
+        #     insert_operator_session = """
+        #         INSERT INTO operator_sessions 
+        #         (session_id, operator_id, client_id, process_id, 
+        #         start_time, end_time, total_time, status)
+        #         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        #     """
 
-            cursor.execute(insert_operator_session, (
-                session["session_id"],
-                session["operator_id"],
-                session["client_id"],
-                session["process_id"],
-                session["start_time"],
-                session["end_time"],
-                session["total_time"],
-                session["status"]
-            ))
+        #     cursor.execute(insert_operator_session, (
+        #         session["session_id"],
+        #         session["operator_id"],
+        #         session["client_id"],
+        #         session["process_id"],
+        #         session["start_time"],
+        #         session["end_time"],
+        #         session["total_time"],
+        #         session["status"]
+        #     ))
 
-            operator_session_db_id = cursor.lastrowid   # auto ID
+        #     operator_session_db_id = cursor.lastrowid   # auto ID
 
-            # ---------------------------------------
-            # 2️⃣ Insert session steps
-            # ---------------------------------------
-            for step in session["session_steps"]:
+        #     # ---------------------------------------
+        #     # 2️⃣ Insert session steps
+        #     # ---------------------------------------
+        #     for step in session["session_steps"]:
 
-                insert_session_step = """
-                    INSERT INTO session_steps
-                    (step_session_id, session_id, step_sr_no, started_at, 
-                    ended_at, time_spent_sec, content_used, client_id, step_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """
+        #         insert_session_step = """
+        #             INSERT INTO session_steps
+        #             (step_session_id, session_id, step_sr_no, started_at, 
+        #             ended_at, time_spent_sec, content_used, client_id, step_id)
+        #             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        #         """
 
-                cursor.execute(insert_session_step, (
-                    step["step_session_id"],
-                    step["session_id"],
-                    step["step_sr_no"],
-                    step["started_at"],
-                    step["ended_at"],
-                    step["time_spent_sec"],
-                    str(step["content_used"]),  # True/False → "True"/"False"
-                    session["client_id"],
-                    step["step_id"]
-                ))
+        #         cursor.execute(insert_session_step, (
+        #             step["step_session_id"],
+        #             step["session_id"],
+        #             step["step_sr_no"],
+        #             step["started_at"],
+        #             step["ended_at"],
+        #             step["time_spent_sec"],
+        #             str(step["content_used"]),  # True/False → "True"/"False"
+        #             session["client_id"],
+        #             step["step_id"]
+        #         ))
 
-                step_session_db_id = cursor.lastrowid
+        #         step_session_db_id = cursor.lastrowid
 
-                # ---------------------------------------
-                # 3️⃣ Insert step content usage
-                # ---------------------------------------
-                for content in step["session_step_content"]:
+        #         # ---------------------------------------
+        #         # 3️⃣ Insert step content usage
+        #         # ---------------------------------------
+        #         for content in step["session_step_content"]:
 
-                    insert_step_content = """
-                        INSERT INTO session_step_content_usage
-                        (usage_id, step_content_type, opened_at, closed_at, duration, 
-                        client_id, step_session_id, step_content_id, language_id)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """
+        #             insert_step_content = """
+        #                 INSERT INTO session_step_content_usage
+        #                 (usage_id, step_content_type, opened_at, closed_at, duration, 
+        #                 client_id, step_session_id, step_content_id, language_id)
+        #                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        #             """
 
-                    cursor.execute(insert_step_content, (
-                        content["usage_id"],
-                        content["step_content_type"],
-                        content["opened_at"],
-                        content["closed_at"],
-                        content["duration"],
-                        session["client_id"],
-                        step_session_db_id,
-                        content["step_content_id"],
-                        content["content_language_id"]
-                    ))
+        #             cursor.execute(insert_step_content, (
+        #                 content["usage_id"],
+        #                 content["step_content_type"],
+        #                 content["opened_at"],
+        #                 content["closed_at"],
+        #                 content["duration"],
+        #                 session["client_id"],
+        #                 step_session_db_id,
+        #                 content["step_content_id"],
+        #                 content["content_language_id"]
+        #             ))
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+        # conn.commit()
+        # cursor.close()
+        # conn.close()
 
         return {
             "status": "success",
