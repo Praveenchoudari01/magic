@@ -26,6 +26,10 @@ class HeaderAuthMiddleware(BaseHTTPMiddleware):
         # Extract headers
         client_id = request.headers.get("client-id")
         device_id = request.headers.get("device-id")
+        print("from middleware")
+        print(client_id, device_id)
+        print("type of client_id", type(client_id))
+
         # signature = request.headers.get("signature")
 
         # Check missing headers
