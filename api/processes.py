@@ -9,28 +9,28 @@ app = FastAPI()
 
 app.add_middleware(HeaderAuthMiddleware)
 
-GLOBAL_DEVICE_SECRET = "MY_STATIC_SECRET_2025"
+# GLOBAL_DEVICE_SECRET = "MY_STATIC_SECRET_2025"
 
-def verify_signature(client_id, device_id, incoming_signature):
-    message = f"{client_id}{device_id}"
-    server_signature = hmac.new(
-        GLOBAL_DEVICE_SECRET.encode(),
-        message.encode(),
-        hashlib.sha256
-    ).hexdigest()
+# def verify_signature(client_id, device_id, incoming_signature):
+#     message = f"{client_id}{device_id}"
+#     server_signature = hmac.new(
+#         GLOBAL_DEVICE_SECRET.encode(),
+#         message.encode(),
+#         hashlib.sha256
+#     ).hexdigest()
 
-    return hmac.compare_digest(server_signature, incoming_signature)
+#     return hmac.compare_digest(server_signature, incoming_signature)
 
 # Get Operators 
 @app.get("/operators")
 def get_operators(
     client_id: int = Header(..., alias="client-id"),
     device_id: int = Header(..., alias="device-id"),
-    signature: str = Header(..., alias="signature")
+    # signature: str = Header(..., alias="signature")
 ):
     # 1. Validate HMAC signature
-    if not verify_signature(client_id, device_id, signature):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    # if not verify_signature(client_id, device_id, signature):
+    #     raise HTTPException(status_code=401, detail="Unauthorized")
 
     try:
         db = get_connection()
@@ -85,10 +85,10 @@ def get_operators(
 def get_processes(
     client_id: int = Header(..., alias="client-id"),
     device_id: int = Header(..., alias="device-id"),
-    signature: str = Header(..., alias="signature")
+    # signature: str = Header(..., alias="signature")
 ):
-    if not verify_signature(client_id, device_id, signature):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    # if not verify_signature(client_id, device_id, signature):
+    #     raise HTTPException(status_code=401, detail="Unauthorized")
     
     try:
         # print("Received client_id:", client_id)
@@ -240,10 +240,10 @@ async def receive_session_data(
     request: Request,
     client_id: str = Header(...),
     device_id: str = Header(...),
-    signature: str = Header(..., alias="signature")
+    # signature: str = Header(..., alias="signature")
 ):
-    if not verify_signature(client_id, device_id, signature):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    # if not verify_signature(client_id, device_id, signature):
+    #     raise HTTPException(status_code=401, detail="Unauthorized")
     
     try:
         # Read JSON body

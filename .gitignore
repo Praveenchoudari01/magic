@@ -15,6 +15,7 @@ env/
 
 # Django
 staticfiles/
+static/
 media/
 
 # IDE related
