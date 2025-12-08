@@ -51,12 +51,29 @@ def get_operators(
 
         operators = []
         for r in rows:
+            operator_id = r["user_id"]
+
+            process_query = """
+                SELECT process_id 
+                FROM oprator_process
+                WHERE operator_id = %s
+            """
+            cursor.execute(process_query, (operator_id))
+            processes = cursor.fetchall()
+
+            process_list = []
+
+            for process in processes:
+                process_list.append({
+                    "process_id" : process["process_id"]
+                })
             operators.append({
                 "operator_id": r["user_id"],
+                "clien_id": client_id,
                 "opertor_name": r["name"],
                 "operator_email": r["email"],
                 "operator_mobile": r["mobile"],
-                "clien_id": client_id
+                "processes": process_list
             })
 
         return {"status": "success", "operators": operators}

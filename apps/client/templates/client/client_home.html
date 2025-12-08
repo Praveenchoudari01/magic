@@ -174,7 +174,7 @@
 
   <!-- Welcome -->
   <div class="welcome-card mb-5">
-    <h2>👋 Welcome, {{ request.session.user_name }}!</h2>
+    <h2>Welcome, {{ request.session.user_name }}!</h2>
     <p class="fs-5 mb-0">This is your <strong>Client Admin Dashboard</strong> home page.</p>
   </div>
 
@@ -183,18 +183,18 @@
     <div class="col-md-4 col-sm-6">
       <div class="action-card">
         <div class="icon-circle"><i class="bi bi-people"></i></div>
-        <h5>Manage Users</h5>
-        <p class="text-muted">View, add, and manage your Users.</p>
-        <a href="#" class="btn btn-gradient btn-sm">Go to Users</a>
+        <h5>Manage Operators</h5>
+        <p class="text-muted">View, add, and manage your Operators.</p>
+        <a href="{% url 'client:client_user_list' %}" class="btn btn-gradient btn-sm">Go to Operators</a>
       </div>
     </div>
 
     <div class="col-md-4 col-sm-6">
       <div class="action-card">
         <div class="icon-circle"><i class="bi bi-speedometer2"></i></div>
-        <h5>Manage User-Camera</h5>
-        <p class="text-muted">View, add, and manage your User-Camera's.</p>
-        <a href="#" class="btn btn-gradient btn-sm">User-Camera</a>
+        <h5>Manage Processes</h5>
+        <p class="text-muted">View, add, and manage your Processes.</p>
+        <a href="{% url 'client:processes' %}" class="btn btn-gradient btn-sm">Process</a>
       </div>
     </div>
 
@@ -203,7 +203,7 @@
         <div class="icon-circle"><i class="bi bi-gear"></i></div>
         <h5>Settings</h5>
         <p class="text-muted">Update your profile and preferences.</p>
-        <a href="#" class="btn btn-gradient btn-sm">Go to Settings</a>
+        <a href="{% url 'client:client_profile' %}" class="btn btn-gradient btn-sm">Go to Profile</a>
       </div>
     </div>
   </div>

@@ -30,6 +30,14 @@ def client_home(request):
     
     return render(request, "client/client_home.html")
 
+def client_profile(request):
+    """Profile page"""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return redirect("accounts:login")
+
+    return render(request, "client/client_profile.html")
+
 # Creating the Operator and displaying the operators list on the table
 def client_user_list(request):
     # check if client_admin is logged in

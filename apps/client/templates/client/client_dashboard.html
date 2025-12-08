@@ -38,6 +38,9 @@
     }
     .navbar-brand img {
       height: 60px;
+      margin-left: 30px;
+      /* padding-left: 50px; */
+      /* border: 2px solid white; */
     }
     .nav-link {
       color: #e6eaff !important;
@@ -197,7 +200,7 @@
   <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
     <div class="container-fluid">
       <a class="navbar-brand" href="#">
-        <img src="{% static 'images/akira.png' %}" alt="Logo" class="me-2">
+        <img src="{% static 'images/magic.png' %}" alt="Logo" class="me-2">
       </a>
 
       <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
@@ -207,7 +210,7 @@
       <div class="collapse navbar-collapse" id="navbarContent">
         <ul class="navbar-nav ms-auto align-items-lg-center">
           <li class="nav-item">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="{% url 'client:client_home' %}">
               <i class="bi bi-house-door"></i> Home
             </a>
           </li>
@@ -231,17 +234,17 @@
               <i class="bi bi-person-video2"></i> VR Device
             </a>
           </li>
-          <li class="nav-item">
+          <!-- <li class="nav-item">
             <a class="nav-link" href="#">
               <i class="bi bi-speedometer2"></i> Dashboard
             </a>
-          </li>
+          </li> -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="navbarProfileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               <i class="bi bi-person-circle fs-5"></i> Profile
             </a>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarProfileDropdown">
-              <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> My Profile</a></li>
+              <li><a class="dropdown-item" href="{% url 'client:client_profile' %}"><i class="bi bi-person"></i> My Profile</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item text-danger fw-bold" href="{% url 'accounts:logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
             </ul>

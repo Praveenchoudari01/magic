@@ -5,6 +5,7 @@ app_name = "client"  # namespace
 
 urlpatterns = [
     path('dashboard/', views.client_home, name='client_home'),
+    path('profile/', views.client_profile, name='client_profile'),
 
     #Department Urls
     path('departments/', views.department_list, name='department_list'),
