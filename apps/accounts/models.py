@@ -52,6 +52,7 @@ class User(models.Model):
     is_active = models.BooleanField(default=True)
 
     password = models.CharField(max_length=255)
+    first_login = models.BooleanField(default=True)
 
     class Meta:
         db_table = "user"
@@ -84,3 +85,34 @@ class AuditTrail(models.Model):
 
     def __str__(self):
         return f"{self.user_name} ({self.role_name}) - {self.action} at {self.timestamp}"
+    
+# Model to reset the passsword via forgot password link
+class PasswordReset(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_resets")
+    token = models.CharField(max_length=255, unique=True, editable=False)
+    otp = models.CharField(max_length=6, editable=False)
+    expiry_time = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            # Generate a secure random token
+            self.token = secrets.token_urlsafe(32)
+        if not self.otp:
+            # Generate a 6-digit OTP
+            self.otp = f"{secrets.randbelow(1000000):06d}"
+        if not self.expiry_time:
+            # Default expiry: 10 minutes from creation
+            self.expiry_time = timezone.now() + timezone.timedelta(minutes=10)
+        super().save(*args, **kwargs)
+
+    def is_expired(self):
+        return timezone.now() > self.expiry_time
+
+    def mark_used(self):
+        self.used = True
+        self.save()
+
+    def __str__(self):
+        return f"PasswordReset(user={self.user.email}, token={self.token}, used={self.used})"

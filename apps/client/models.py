@@ -63,7 +63,10 @@ class Process(models.Model):
         'product_owner.Client',
         on_delete=models.CASCADE
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
+    
 
     class Meta:
         db_table = 'processes'
@@ -85,7 +88,10 @@ class Step(models.Model):
     step_desc = models.CharField(max_length=255)
     est_step_time = models.IntegerField()
     step_sr_no = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
+    
 
     class Meta:
         db_table = 'steps'
@@ -117,6 +123,8 @@ class StepContent(models.Model):
         max_length=20,
         choices=CONTENT_TYPES
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -142,6 +150,8 @@ class StepContentDetail(models.Model):
 
     # can store duration (for audio/video) or page count (pdf/text)
     duration_or_no_pages = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -173,6 +183,8 @@ class StepContentVoiceOver(models.Model):
     file_url = models.CharField(max_length=255)
     language_id = models.CharField(max_length=10)
     language = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -202,6 +214,8 @@ class StepContentCaptions(models.Model):
         max_length=10,
         choices=CAPTION_FILE_TYPES
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -233,7 +247,8 @@ class OperatorProcess(models.Model):
         on_delete=models.CASCADE,
         related_name='operator_processes'
     )
-
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     class Meta:
         db_table = 'oprator_process'   # using your exact table name
 

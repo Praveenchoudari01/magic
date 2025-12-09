@@ -6,7 +6,7 @@ from django.conf import settings
 from apps.accounts.utils import perform_logout
 from apps.product_owner.models import Client
 from apps.accounts.models import User, Type
-from apps.client.models import Department, VRDevice, Process, Step, StepContent
+from apps.client.models import Department, VRDevice, Process, Step, StepContent, OperatorProcess
 from django.contrib import messages
 import random
 import string
@@ -19,7 +19,7 @@ import httpagentparser
 import paho.mqtt.client as mqtt
 import json
 import time
-
+from django.db.models import Count
 
 # Create your views here.
 def client_home(request):
@@ -41,20 +41,20 @@ def client_profile(request):
 # Creating the Operator and displaying the operators list on the table
 def client_user_list(request):
     # check if client_admin is logged in
-    print("user id is ", request.session["user_id"])
+    # print("user id is ", request.session["user_id"])
     if "user_id" not in request.session:
         return redirect("accounts:login")
     
     client_admin = User.objects.get(user_id=request.session["user_id"])
-    print("client_admin is ", client_admin)
+    # print("client_admin is ", client_admin)
 
     # fetch all users of the same client
-    users = User.objects.filter(client=client_admin.client).order_by("user_id")
-    print("users ",users)
+    users = User.objects.filter(client=client_admin.client,  type_id=4).order_by("user_id")
+    # print("users ",users)
 
     # fetch departments for dropdown
     departments = Department.objects.filter(client=client_admin.client, is_active=True)
-    print("departments ",departments)
+    # print("departments ",departments)
 
     # render template
     return render(request, "client/users.html", {
@@ -69,13 +69,13 @@ def add_client_user(request):
         return redirect("accounts:login")
 
     t = Type.objects.get(pk=4)
-    print("Type id is", t.type_id)
+    # print("Type id is", t.type_id)
 
     client_admin = User.objects.get(user_id=request.session["user_id"])
-    print("client admin from add_client_user view ",client_admin)
+    # print("client admin from add_client_user view ",client_admin)
 
     users = User.objects.filter(client=client_admin.client)
-    print("users from  add_client_user view ", users)
+    # print("users from  add_client_user view ", users)
 
 
     user = User.objects.all()
@@ -264,25 +264,47 @@ def department_activate(request, pk):
 # VR device Registration
 # MQTT Publisher
 def publish_mqtt_message(topic, payload):
-    broker = "broker.hivemq.com"
-    port = 1883
+    broker = "mqtt.360vista.app"
+    port = 8883
+    username = "mqttAdmin"
+    password = "Vista#412"
 
     try:
-        client = mqtt.Client(callback_api_version=2)  # Updated API
+        client = mqtt.Client()
+
+        # ---- Authentication ----
+        client.username_pw_set(username, password)
+
+        # ---- If the broker requires TLS (port 8888 usually DOES) ----
+        client.tls_set()  
+
+        # ---- Connect ----
         client.connect(broker, port, 60)
-        client.loop_start()  # start network loop BEFORE publishing
+
+        client.loop_start()
 
         message = json.dumps(payload)
-        result = client.publish(topic, message, qos=1)  # QoS 1 ensures delivery
-        result.wait_for_publish()  # Wait until message is sent
 
-        print("📤 Message published successfully")
-        time.sleep(0.5)  # Small delay to ensure delivery
-        client.loop_stop()
+        # ---- Publish with guaranteed delivery ----
+        info = client.publish(
+            topic,
+            message,
+            qos=1,
+            retain=True
+        )
+
+        info.wait_for_publish()     # wait until broker ACKs the message
+
+        #print("Publish return code:", info.rc)
+        #print("Message published successfully to:", topic)
+
+        time.sleep(1)  # allow loop to finish network operations
+
+        client.loop_stop(force=False)
         client.disconnect()
 
     except Exception as e:
-        print(f"❌ MQTT publish error: {e}")
+        print(f"MQTT publish error: {e}")
 
 #Vr_Device
 # VR Device List View
@@ -389,7 +411,11 @@ def processes(request):
     client_id = User.objects.get(user_id=user_id).client_id
 
     # Fetch processes for this client
-    processes_list = Process.objects.filter(client_id=client_id)
+    processes_list = (
+        Process.objects
+        .filter(client_id=client_id)
+        .annotate(operators=Count('operator_processes'))  # <-- Key: operators
+    )
 
     context = {
         "processes": processes_list
@@ -508,3 +534,71 @@ def step_contents(request, step_id):
         "contents": contents
     })
 
+def operator_process_list(request, process_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    # Fetch selected process
+    process = Process.objects.get(process_id=process_id)
+
+    # # Fetch operator mappings for this process
+    mappings = (
+        OperatorProcess.objects
+        .filter(process_id=process_id)
+        .select_related('operator')
+    )
+
+    context = {
+        "process": process,
+        "mappings": mappings
+    }
+
+    return render(request, "client/process/operator_process.html", context)
+
+def add_mapping(request, process_id):
+    # Get process
+    process = Process.objects.get(process_id=process_id)
+
+    # Get active operators
+    operators = User.objects.filter(type_id=4, is_active=True)
+
+    if request.method == "POST":
+        operator_id = request.POST.get("operator_id")
+        operator = User.objects.get(user_id=operator_id)
+
+        # Check if mapping already exists
+        mapping_exists = OperatorProcess.objects.filter(
+            process=process,
+            operator=operator
+        ).exists()
+
+        if mapping_exists:
+            # Operator already mapped -> send context message
+            context = {
+                "process": process,
+                "mappings": OperatorProcess.objects.filter(process=process),
+                "toast_message": f"Operator '{operator.name}' is already mapped with this process.",
+                "toast_type": "warning",
+            }
+        else:
+            # Create mapping
+            OperatorProcess.objects.create(
+                process=process,
+                operator=operator,
+                client=process.client
+            )
+            context = {
+                "process": process,
+                "mappings": OperatorProcess.objects.filter(process=process),
+                "toast_message": f"Operator '{operator.name}' mapped successfully.",
+                "toast_type": "success",
+            }
+
+        # Render the listing page directly with toast message
+        return render(request, "client/process/operator_process.html", context)
+
+    # GET request -> show add_mapping page
+    return render(request, "client/process/add_mapping.html", {
+        "process": process,
+        "operators": operators,
+    })

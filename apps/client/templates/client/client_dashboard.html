@@ -199,7 +199,7 @@
 <body>
   <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
     <div class="container-fluid">
-      <a class="navbar-brand" href="#">
+      <a class="navbar-brand" href="{% url 'client:client_home' %}">
         <img src="{% static 'images/magic.png' %}" alt="Logo" class="me-2">
       </a>
 
@@ -226,12 +226,12 @@
           </li>
           <li class="nav-item">
             <a class="nav-link" href="{% url 'client:processes' %}">
-              <i class="bi bi-camera-video"></i> Processes
+              <i class="bi bi-sliders"></i> Processes
             </a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="{% url 'client:vr_device_list_view' %}">
-              <i class="bi bi-person-video2"></i> VR Device
+              <i class="bi bi-headset-vr"></i> VR Device
             </a>
           </li>
           <!-- <li class="nav-item">

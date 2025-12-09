@@ -254,84 +254,84 @@ async def receive_session_data(
         conn = get_connection()
         cursor = conn.cursor()
 
-        # for session in operator_session_list:
+        for session in operator_session_list:
 
-        #     # ---------------------------------------
-        #     # 1️⃣ Insert into operator_sessions table
-        #     # ---------------------------------------
-        #     insert_operator_session = """
-        #         INSERT INTO operator_sessions 
-        #         (session_id, operator_id, client_id, process_id, 
-        #         start_time, end_time, total_time, status)
-        #         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        #     """
+            # ---------------------------------------
+            # 1️⃣ Insert into operator_sessions table
+            # ---------------------------------------
+            insert_operator_session = """
+                INSERT INTO operator_sessions 
+                (session_id, operator_id, client_id, process_id, 
+                start_time, end_time, total_time, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
 
-        #     cursor.execute(insert_operator_session, (
-        #         session["session_id"],
-        #         session["operator_id"],
-        #         session["client_id"],
-        #         session["process_id"],
-        #         session["start_time"],
-        #         session["end_time"],
-        #         session["total_time"],
-        #         session["status"]
-        #     ))
+            cursor.execute(insert_operator_session, (
+                session["session_id"],
+                session["operator_id"],
+                session["client_id"],
+                session["process_id"],
+                session["start_time"],
+                session["end_time"],
+                session["total_time"],
+                session["status"]
+            ))
 
-        #     operator_session_db_id = cursor.lastrowid   # auto ID
+            operator_session_db_id = cursor.lastrowid   # auto ID
 
-        #     # ---------------------------------------
-        #     # 2️⃣ Insert session steps
-        #     # ---------------------------------------
-        #     for step in session["session_steps"]:
+            # ---------------------------------------
+            # 2️⃣ Insert session steps
+            # ---------------------------------------
+            for step in session["session_steps"]:
 
-        #         insert_session_step = """
-        #             INSERT INTO session_steps
-        #             (step_session_id, session_id, step_sr_no, started_at, 
-        #             ended_at, time_spent_sec, content_used, client_id, step_id)
-        #             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        #         """
+                insert_session_step = """
+                    INSERT INTO session_steps
+                    (step_session_id, session_id, step_sr_no, started_at, 
+                    ended_at, time_spent_sec, content_used, client_id, step_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
 
-        #         cursor.execute(insert_session_step, (
-        #             step["step_session_id"],
-        #             step["session_id"],
-        #             step["step_sr_no"],
-        #             step["started_at"],
-        #             step["ended_at"],
-        #             step["time_spent_sec"],
-        #             str(step["content_used"]),  # True/False → "True"/"False"
-        #             session["client_id"],
-        #             step["step_id"]
-        #         ))
+                cursor.execute(insert_session_step, (
+                    step["step_session_id"],
+                    step["session_id"],
+                    step["step_sr_no"],
+                    step["started_at"],
+                    step["ended_at"],
+                    step["time_spent_sec"],
+                    str(step["content_used"]),  # True/False → "True"/"False"
+                    session["client_id"],
+                    step["step_id"]
+                ))
 
-        #         step_session_db_id = cursor.lastrowid
+                step_session_db_id = cursor.lastrowid
 
-        #         # ---------------------------------------
-        #         # 3️⃣ Insert step content usage
-        #         # ---------------------------------------
-        #         for content in step["session_step_content"]:
+                # ---------------------------------------
+                # 3️⃣ Insert step content usage
+                # ---------------------------------------
+                for content in step["session_step_content"]:
 
-        #             insert_step_content = """
-        #                 INSERT INTO session_step_content_usage
-        #                 (usage_id, step_content_type, opened_at, closed_at, duration, 
-        #                 client_id, step_session_id, step_content_id, language_id)
-        #                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        #             """
+                    insert_step_content = """
+                        INSERT INTO session_step_content_usage
+                        (usage_id, step_content_type, opened_at, closed_at, duration, 
+                        client_id, step_session_id, step_content_id, language_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """
 
-        #             cursor.execute(insert_step_content, (
-        #                 content["usage_id"],
-        #                 content["step_content_type"],
-        #                 content["opened_at"],
-        #                 content["closed_at"],
-        #                 content["duration"],
-        #                 session["client_id"],
-        #                 step_session_db_id,
-        #                 content["step_content_id"],
-        #                 content["content_language_id"]
-        #             ))
+                    cursor.execute(insert_step_content, (
+                        content["usage_id"],
+                        content["step_content_type"],
+                        content["opened_at"],
+                        content["closed_at"],
+                        content["duration"],
+                        session["client_id"],
+                        step_session_db_id,
+                        content["step_content_id"],
+                        content["content_language_id"]
+                    ))
 
-        # conn.commit()
-        # cursor.close()
-        # conn.close()
+        conn.commit()
+        cursor.close()
+        conn.close()
 
         return {
             "status": "success",

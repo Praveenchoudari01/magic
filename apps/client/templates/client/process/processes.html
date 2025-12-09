@@ -38,6 +38,7 @@
           <th>Description</th>
           <th>No. of Steps</th>
           <th>Est. Time (seconds)</th>
+          <th>No Of Operators</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
@@ -55,7 +56,13 @@
           <td>{{ process.process_desc }}</td>
           <td>{{ process.no_of_steps }}</td>
           <td>{{ process.est_process_time }} sec</td>
-
+          <td>
+              <a href="{% url 'client:operator_process_list' process.process_id %}"
+                class="text-decoration-none fw-semibold"
+                style="cursor:pointer;">
+                  {{ process.operators }}
+              </a>
+          </td>
           <td data-export="{{ process.is_active|yesno:'Active,Inactive' }}">
             {% if process.is_active %}
               <span class="badge bg-success">Active</span>

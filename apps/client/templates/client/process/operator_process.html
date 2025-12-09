@@ -1,0 +1,207 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-0 gap-2 header-responsive">
+
+    <h2 class="fw-bold mb-2 mb-md-0"
+        style="color: rgba(137, 43, 226, 0.559);">
+      Operators for: 
+      <a href="{% url 'client:processes' %}" class="text-decoration-none fw-semibold" style="color: blue;">
+        {{ process.process_name }}
+      </a>
+    </h2>
+
+    <div class="d-flex flex-wrap gap-2 action-buttons">
+
+      <!-- Add Mapping -->
+      <a href="{% url 'client:add_mapping' process.process_id %}" class="btn text-white px-3 py-2"
+         style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+        <i class="bi bi-plus-lg"></i>&nbsp;Add Mapping
+      </a>
+
+      <!-- Export -->
+      <button class="btn btn-outline-dark px-3 py-2"
+              data-bs-toggle="modal" data-bs-target="#exportModal">
+        <i class="bi bi-download"></i>&nbsp;Export
+      </button>
+
+    </div>
+  </div>
+  <hr class="mb-0">
+
+  <!-- Table -->
+  <div class="table-responsive mt-2">
+    <table id="mappingTable" class="table table-striped align-middle w-100">
+      <thead class="table-dark">
+        <tr>
+          <th>Sl No</th>
+          <th>Operator Name</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for m in mappings %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ m.operator.name }}</td>
+          <td>{{ m.operator.email }}</td>
+
+          <td>
+            {% if m.operator.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-danger">Inactive</span>
+            {% endif %}
+          </td>
+
+          <td>
+            <a href="#" class="text-primary me-2" title="Edit">
+              <i class="bi bi-pencil-fill fs-6"></i></a>
+
+            {% if process.is_active %}
+              <a href="#" class="text-success me-2" title="Deactivate">
+                <i class="bi bi-toggle-on fs-5"></i>
+              </a>
+            {% else %}
+              <a href="#" class="text-danger me-2" title="Activate">
+                <i class="bi bi-toggle-off fs-5"></i>
+              </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center py-3">No Operators Mapped</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+
+    </table>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-3 shadow">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Export Mappings</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="d-grid gap-2">
+
+          <button class="btn btn-outline-primary" id="exportCsv">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Export as CSV
+          </button>
+
+          <button class="btn btn-outline-success" id="exportExcel">
+            <i class="bi bi-file-earmark-excel"></i> Export as Excel
+          </button>
+
+          <button class="btn btn-outline-danger" id="exportPdf">
+            <i class="bi bi-file-earmark-pdf"></i> Export as PDF
+          </button>
+
+          <button class="btn btn-outline-secondary" id="exportPrint">
+            <i class="bi bi-printer"></i> Print
+          </button>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 1100;">
+  {% if toast_message %}
+    <div id="toastMessage" class="toast align-items-center text-white border-0
+        {% if toast_type == 'success' %}bg-success{% else %}bg-warning{% endif %}" 
+        role="alert" aria-live="assertive" aria-atomic="true" 
+        data-bs-animation="true" data-bs-autohide="true" data-bs-delay="2000">
+      <div class="d-flex">
+        <div class="toast-body">
+          {{ toast_message }}
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+
+
+<!-- CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+<!-- JS -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- Buttons -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+
+<!-- CSV/Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+
+<!-- PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+
+<!-- Print -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+
+<script>
+$(document).ready(function() {
+
+    // Initialize DataTable with hidden export buttons
+    const table = $('#mappingTable').DataTable({
+        scrollX: true,
+        pageLength: 10,
+        lengthChange: false,
+        searching: true,
+        ordering: true,
+        info: true,
+        autoWidth: false,
+        language: { search: "_INPUT_", searchPlaceholder: "Search operators..." },
+
+        dom: '<"top d-flex justify-content-end align-items-center mb-2"f>rt<"bottom d-flex justify-content-end align-items-center mt-2"ip>',
+
+        buttons: [
+            { extend: 'csv', className: 'btn-export-csv d-none', title: 'Operator_Mappings' },
+            { extend: 'excel', className: 'btn-export-excel d-none', title: 'Operator_Mappings' },
+            { extend: 'pdf', className: 'btn-export-pdf d-none', title: 'Operator_Mappings' },
+            { extend: 'print', className: 'btn-export-print d-none', title: 'Operator Mappings' }
+        ]
+    });
+
+    // Modal export triggers
+    $('#exportCsv').click(() => table.button('.btn-export-csv').trigger());
+    $('#exportExcel').click(() => table.button('.btn-export-excel').trigger());
+    $('#exportPdf').click(() => table.button('.btn-export-pdf').trigger());
+    $('#exportPrint').click(() => table.button('.btn-export-print').trigger());
+});
+
+document.addEventListener("DOMContentLoaded", function() {
+    const toastEl = document.getElementById('toastMessage');
+    if(toastEl){
+        const bsToast = new bootstrap.Toast(toastEl); // 2s auto-hide
+        bsToast.show();
+    }
+});
+</script>
+
+{% endblock %}

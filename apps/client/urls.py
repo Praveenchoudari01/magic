@@ -32,4 +32,8 @@ urlpatterns = [
     path('process/<int:process_id>/steps/add/', views.add_step, name='add_step'),
     path("step/<int:step_id>/contents/", views.step_contents, name="step_contents"),
 
+    #operator-process
+    path('operator-process/<int:process_id>/', views.operator_process_list, name='operator_process_list'),
+    path("process/<int:process_id>/add-mapping/",views.add_mapping,name="add_mapping"),
+
 ]
