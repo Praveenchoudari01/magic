@@ -1,15 +1,17 @@
 {% extends "client/client_dashboard.html" %}
 {% block content %}
-<div class="container mt-5">
-    <div class="card shadow-sm p-4">
-
-        <!-- Page Title -->
-        <h2 class="mb-4 fw-bold"
+<div class="container">
+    <h2 class="mb-4 fw-bold"
             style="background: linear-gradient(90deg, #e91e63, #3f51b5);
                    -webkit-background-clip: text;
                    -webkit-text-fill-color: transparent;">
             Add Department
-        </h2>
+    </h2>
+
+    <div class="card shadow-sm p-4">
+
+        <!-- Page Title -->
+        
 
         <form method="post">
             {% csrf_token %}

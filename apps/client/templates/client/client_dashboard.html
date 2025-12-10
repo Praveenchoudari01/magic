@@ -255,7 +255,17 @@
       <div class="navbar-backdrop" data-bs-toggle="collapse" data-bs-target="#navbarContent"></div>
     </div>
   </nav>
+  {% if error_message %}
+  <div id="popup-message" class="popup-message show" style="background:#f44336;">
+      <i class="bi bi-exclamation-triangle-fill"></i> {{ error_message }}
+  </div>
 
+  {% elif success_message %}
+  <div id="popup-message" class="popup-message show" style="background:#4CAF50;">
+      <i class="bi bi-check-circle-fill"></i> {{ success_message }}
+  </div>
+  {% endif %}
+  
   <div class="content-wrapper">
     <div class="container-fluid content-box">
       {% block content %}{% endblock %}

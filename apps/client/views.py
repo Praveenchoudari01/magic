@@ -458,6 +458,13 @@ def add_process(request):
 def step_list(request, process_id):
     if "user_id" not in request.session:
         return redirect("accounts:login")
+    
+    error = None 
+    success = None
+    if 'error_message' in request.session:
+        error = request.session.pop('error_message')
+    if 'success_message' in request.session:
+        success = request.session.pop('success_message')
 
     process = get_object_or_404(Process, pk=process_id)
     steps = Step.objects.filter(process_id=process_id).order_by('step_id')
@@ -465,6 +472,8 @@ def step_list(request, process_id):
     context = {
         "process": process,
         "steps": steps,
+        "error_message" : error,
+        "success_message" : success
     }
 
     return render(request, "client/process/step_list.html", context)
@@ -490,7 +499,11 @@ def add_step(request, process_id):
             request,
             f"You have already added all {allowed_steps} steps for this process."
         )
-        return redirect("client:steps_list", process_id=process_id)
+        request.session['error_message'] = f"""You have already added all {allowed_steps} steps for this process.
+                                        If you want to add more messages then please update No of steps,
+                                        Or deactivate any existing step.
+                                    """
+        return redirect("client:step_list", process_id=process_id)
 
     if request.method == "POST":
         step_name = request.POST.get("step_name").strip()
@@ -508,6 +521,7 @@ def add_step(request, process_id):
         )
 
         messages.success(request, "Step added successfully!")
+        request.session['success_message'] = f"{step_name} added successully"
         return redirect("client:step_list", process_id=process_id)
 
     remaining_steps = allowed_steps - existing_steps
@@ -528,11 +542,38 @@ def step_contents(request, step_id):
 
     # Load all contents for this step
     contents = StepContent.objects.filter(step=step)
+    print(contents)
 
     return render(request, "client/process/step_content.html", {
         "step": step,
         "contents": contents
     })
+
+# Step content adding
+def add_step_content(request, step_id):
+    step = get_object_or_404(Step, step_id=step_id)
+
+    if request.method == "POST":
+        name = request.POST.get("name")
+        desc = request.POST.get("desc")
+        content_type = request.POST.get("content_type")
+
+        StepContent.objects.create(
+            step=step,
+            name=name,
+            desc=desc,
+            content_type=content_type,
+            is_active=True
+        )
+
+        messages.success(request, "Content added successfully!")
+        return redirect("client:step_contents", step_id)
+
+    context = {
+        "step": step,
+        "content_types": StepContent.CONTENT_TYPES
+    }
+    return render(request, "client/process/add_step_content.html", context)
 
 def operator_process_list(request, process_id):
     if "user_id" not in request.session:
