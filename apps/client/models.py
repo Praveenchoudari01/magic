@@ -144,7 +144,7 @@ class StepContentDetail(models.Model):
     )
 
     # language_id is unique
-    language_id = models.CharField(max_length=10)
+    language_id = models.CharField(max_length=10,db_column='content_language_id')
 
     file_url = models.CharField(max_length=255)
 
@@ -157,8 +157,8 @@ class StepContentDetail(models.Model):
     class Meta:
         db_table = 'step_content_details'
 
-    def __str__(self):
-        return f"{self.name} ({self.content_type})"
+    # def __str__(self):
+    #     return f"{self.step_content} ({self.content_type})"
 
 class StepContentVoiceOver(models.Model):
     step_content_voice_over_id = models.AutoField(primary_key=True)
@@ -200,7 +200,8 @@ class StepContentCaptions(models.Model):
     step_content_voice_over = models.ForeignKey(
         'client.StepContentDetail',
         on_delete=models.CASCADE,
-        related_name='captions'
+        related_name='captions',
+        db_column='step_content_detail_id'
     )
 
     file_url = models.CharField(max_length=255)

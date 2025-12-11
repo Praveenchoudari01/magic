@@ -32,6 +32,12 @@ urlpatterns = [
     path('process/<int:process_id>/steps/add/', views.add_step, name='add_step'),
     path("step/<int:step_id>/contents/", views.step_contents, name="step_contents"),
     path('step/<int:step_id>/content/add/', views.add_step_content, name='add_step_content'),
+    path('step-content/<int:content_id>/details/',views.step_content_details,name='step_content_details'),
+    path("step-content/<int:content_id>/details/add/",views.add_step_content_detail,name="add_step_content_detail"),
+    path("step-content-detail/<int:detail_id>/voice-overs/",views.voice_over_list,name="voice_over_list"),
+    path("step-content-detail/<int:detail_id>/captions/",views.caption_list,name="caption_list"),
+    path("step-content/voice-over/<int:detail_id>/", views.add_voice_over, name="add_voice_over"),
+    path("step-content/captions/<int:detail_id>/", views.add_captions, name="add_captions"),
 
 
     #operator-process

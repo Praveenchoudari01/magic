@@ -1,0 +1,108 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <h3 class="fw-bold">Add Content Details</h3>
+
+  <h6 class="text-secondary">
+    Content Type: <strong>{{ content.get_content_type_display }}</strong>
+  </h6>
+
+  <hr>
+
+  {% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <!-- IMPORTANT: enable file upload -->
+  <form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Language Dropdown -->
+    <div class="mb-3">
+      <label class="form-label">Language</label>
+      <select name="language_id" class="form-select" required>
+        <option value="">Select Language</option>
+        <option value="EN">English</option>
+        <option value="TEL">Telugu</option>
+        <option value="HIN">Hindi</option>
+        <option value="KAN">Kannada</option>
+        <option value="MAL">Malayalam</option>
+      </select>
+    </div>
+
+    <!-- File Upload -->
+    <div class="mb-3">
+      <label class="form-label">Upload File</label>
+      <input type="file" name="upload_file" class="form-control" required>
+    </div>
+
+    <!-- Duration or Page Count -->
+    <div class="mb-3">
+      <label class="form-label">
+        {% if content.content_type == "video" or content.content_type == "audio" %}
+          Duration (seconds)
+        {% else %}
+          Number of Pages
+        {% endif %}
+      </label>
+
+      <input type="number" name="duration_or_no_pages" class="form-control" required>
+    </div>
+
+    <!-- Active Checkbox -->
+    <div class="form-check mb-3">
+      <input type="checkbox" name="is_active" class="form-check-input" checked>
+      <label class="form-check-label">Active</label>
+    </div>
+
+    <button class="btn btn-primary">Save</button>
+    <a href="{% url 'client:step_content_details' content.step_content_id %}"
+       class="btn btn-secondary">Cancel</a>
+
+  </form>
+
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const contentType = "{{ content.content_type|lower }}"; // video / audio / image / pdf / document
+    const fileInput = document.querySelector('input[name="upload_file"]');
+
+    const allowedExtensions = {
+        "video": ["mp4", "mov", "avi", "mkv"],
+        "audio": ["mp3", "wav", "m4a"],
+        "image": ["jpg", "jpeg", "png", "webp"],
+        "pdf": ["pdf"],
+        "document": ["doc", "docx", "txt"]
+    };
+
+    function showToast(message) {
+        document.getElementById("fileToastMsg").innerHTML = message;
+        const toastElement = document.getElementById("fileToast");
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+    }
+
+    fileInput.addEventListener("change", function () {
+        const filePath = this.value.toLowerCase();
+        const ext = filePath.split('.').pop();
+
+        if (!allowedExtensions[contentType].includes(ext)) {
+            showToast(
+                "Invalid file type! This content requires a <strong>" + 
+                contentType.toUpperCase() +
+                "</strong> file.<br>Allowed formats: <strong>" + 
+                allowedExtensions[contentType].join(", ") + 
+                "</strong>"
+            );
+
+            this.value = ""; // reset invalid file selection
+        }
+    });
+
+});
+</script>
+
+{% endblock %}

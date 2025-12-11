@@ -8,67 +8,80 @@
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="{% url 'client:processes' %}">Processes</a></li>
       <li class="breadcrumb-item">
-        <a href="{% url 'client:step_list' step.process.process_id %}">{{ step.process.process_name }}</a>
+        <a href="{% url 'client:step_list' content.step.process.process_id %}">
+          {{ content.step.process.process_name }}
+        </a>
       </li>
-      <li class="breadcrumb-item active" aria-current="page">
-        {{ step.step_name }}
+      <li class="breadcrumb-item">
+        <a href="{% url 'client:step_contents' content.step.step_id %}">
+            {{ content.step.step_name }}
+        </a>
       </li>
+      <li class="breadcrumb-item active">{{ content.name }}</li>
     </ol>
   </nav>
 
-  <!-- Page Header -->
+  <!-- PAGE HEADER -->
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2 header-responsive">
+    <h2 class="fw-bold mb-0">Content: {{ content.name }}</h2>
 
-    <h2 class="fw-bold mb-0">Step : {{ step.step_name }}</h2>
+    <div class="d-flex flex-wrap gap-2">
 
-    <div class="d-flex flex-wrap gap-2 action-buttons">
-
-      <a href="{% url 'client:add_step_content' step.step_id %}"
-         class="btn text-white d-flex align-items-center justify-content-center px-3 py-2"
+      <!-- Add Details Button -->
+      <a href="{% url 'client:add_step_content_detail' content.step_content_id %}"
+         class="btn text-white px-3 py-2"
          style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
-        <i class="bi bi-plus-lg"></i>&nbsp;Add Content
+        <i class="bi bi-plus-lg"></i>&nbsp;Add Content Detail
       </a>
 
-      <button class="btn btn-outline-dark d-flex align-items-center justify-content-center px-3 py-2"
+      <!-- Export Button -->
+      <button class="btn btn-outline-dark px-3 py-2"
               data-bs-toggle="modal" data-bs-target="#exportModal">
         <i class="bi bi-download"></i>&nbsp;Export
       </button>
+
     </div>
   </div>
 
-  <hr class="mb-0">
+  <h6 class="text-secondary mb-3">
+    Content Type: <span class="fw-bold text-primary">{{ content_type }}</span>
+  </h6>
 
-  <!-- Step Content Table -->
+  <hr />
+
+  <!-- TABLE -->
   <div class="table-responsive mt-2">
-    <table id="stepContentTable" class="table table-striped align-middle w-100">
+    <table id="detailsTable" class="table table-striped align-middle w-100">
       <thead class="table-dark">
         <tr>
           <th>Sl No</th>
-          <th>Name</th>
-          <th>Description</th>
-          <th>Type</th>
+          <th>Language</th>
+          <th>Duration / Pages</th>
+          <th>Media</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
       </thead>
 
       <tbody>
-        {% for content in contents %}
+        {% for d in details %}
         <tr>
           <td>{{ forloop.counter }}</td>
+          <td>{{ d.language_id }}</td>
+          <td>{{ d.duration_or_no_pages|default:"-" }}</td>
+          <td>
+            <a href="{% url 'client:voice_over_list' d.step_content_id  %}" 
+            class="btn btn-sm btn-outline-primary me-1">
+                <i class="bi bi-mic-fill"></i> Voice Over
+            </a>
 
-          <td class="fw-bold text-primary">
-            <a href="{% url 'client:step_content_details' content.step_content_id %}">
-              {{ content.name }}
+            <a href="{% url 'client:caption_list' d.step_content_id  %}" 
+            class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-fonts"></i> Captions
             </a>
           </td>
-
-          <td>{{ content.desc }}</td>
-
-          <td>{{ content.get_content_type_display }}</td>
-
           <td>
-            {% if content.is_active %}
+            {% if d.is_active %}
               <span class="badge bg-success">Active</span>
             {% else %}
               <span class="badge bg-danger">Inactive</span>
@@ -76,17 +89,15 @@
           </td>
 
           <td>
-            <a href="#"
-               class="text-primary me-2" title="Edit"><i class="bi bi-pencil-fill fs-6"></i></a>
+            <a href="#" class="text-primary me-2" title="Edit">
+              <i class="bi bi-pencil-fill fs-6"></i></a>
 
-            {% if content.is_active %}
-              <a href="#"
-                 class="text-success me-2" title="Deactivate">
+            {% if d.is_active %}
+              <a href="#" class="text-success" title="Deactivate">
                 <i class="bi bi-toggle-on fs-5"></i>
               </a>
             {% else %}
-              <a href="#"
-                 class="text-danger me-2" title="Activate">
+              <a href="#" class="text-danger" title="Activate">
                 <i class="bi bi-toggle-off fs-5"></i>
               </a>
             {% endif %}
@@ -95,7 +106,7 @@
 
         {% empty %}
         <tr>
-          <td colspan="6" class="text-center py-3">No content added for this step.</td>
+          <td colspan="5" class="text-center py-3">No details added for this content.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -103,12 +114,12 @@
   </div>
 </div>
 
-<!-- Export Modal -->
+<!-- EXPORT MODAL -->
 <div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content rounded-3 shadow">
       <div class="modal-header">
-        <h5 class="modal-title fw-bold">Export Step Contents</h5>
+        <h5 class="modal-title fw-bold">Export Content Details</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
@@ -136,7 +147,7 @@
   </div>
 </div>
 
-<!-- DataTables CSS & JS -->
+<!-- DATATABLES -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 
@@ -144,7 +155,6 @@
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 
-<!-- Buttons Extension -->
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
@@ -155,28 +165,24 @@
 <script>
 $(document).ready(function() {
 
-  const table = $('#stepContentTable').DataTable({
+  const table = $('#detailsTable').DataTable({
     scrollX: true,
-    responsive: false,
     pageLength: 10,
     lengthChange: false,
-    searching: true,
-    ordering: true,
-    info: true,
     autoWidth: false,
     language: {
       search: "_INPUT_",
-      searchPlaceholder: "Search contents..."
+      searchPlaceholder: "Search content details..."
     },
     columnDefs: [
-      { orderable: false, targets: [0, 5] }
+      { orderable: false, targets: [0, 4] }
     ],
-    dom: '<"top d-flex justify-content-end align-items-center mb-2"f>rt<"bottom d-flex justify-content-end align-items-center mt-2"ip>',
+    dom: '<"top d-flex justify-content-end mb-2"f>rt<"bottom d-flex justify-content-end mt-2"ip>',
     buttons: [
-      { extend: 'csv', className: 'd-none', exportOptions: { columns: [0,1,2,3,4] }},
-      { extend: 'excel', className: 'd-none', exportOptions: { columns: [0,1,2,3,4] }},
-      { extend: 'pdf', className: 'd-none', exportOptions: { columns: [0,1,2,3,4] }},
-      { extend: 'print', className: 'd-none', exportOptions: { columns: [0,1,2,3,4] }}
+      { extend: 'csv', className: 'd-none', exportOptions: { columns: [0,1,2,3] }},
+      { extend: 'excel', className: 'd-none', exportOptions: { columns: [0,1,2,3] }},
+      { extend: 'pdf', className: 'd-none', exportOptions: { columns: [0,1,2,3] }},
+      { extend: 'print', className: 'd-none', exportOptions: { columns: [0,1,2,3] }}
     ]
   });
 
@@ -189,16 +195,8 @@ $(document).ready(function() {
   $("#exportExcel").click(() => { table.button('.buttons-excel').trigger(); closeModal(); });
   $("#exportPdf").click(() => { table.button('.buttons-pdf').trigger(); closeModal(); });
   $("#exportPrint").click(() => { table.button('.buttons-print').trigger(); closeModal(); });
+
 });
 </script>
-
-<style>
-@media (max-width: 768px) {
-  .header-responsive { flex-direction: column !important; align-items: flex-start !important; }
-  .action-buttons button, .action-buttons a { width: auto !important; font-size: 0.85rem; padding: 0.5rem 0.75rem; }
-  h2 { font-size: 1.3rem; }
-  .table td, .table th { font-size: 0.85rem; white-space: nowrap; }
-}
-</style>
 
 {% endblock %}

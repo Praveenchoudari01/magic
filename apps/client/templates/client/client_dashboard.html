@@ -57,7 +57,7 @@
     .navbar-nav .nav-link:hover,
     .navbar-nav .nav-link.active {
       background: rgba(255, 255, 255, 0.2);
-      color: #fff !important;
+      color: #ffffff !important;
     }
     .nav-avatar {
       width: 36px;
@@ -266,6 +266,19 @@
   </div>
   {% endif %}
   
+  <!-- Toast Notification (Top Center) -->
+  <div class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 9999;">
+      <div id="fileToast" class="toast align-items-center text-bg-danger border-0" role="alert">
+          <div class="d-flex">
+              <div class="toast-body" id="fileToastMsg">
+                  <!-- Message injected here -->
+              </div>
+              <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                      data-bs-dismiss="toast"></button>
+          </div>
+      </div>
+  </div>
+
   <div class="content-wrapper">
     <div class="container-fluid content-box">
       {% block content %}{% endblock %}

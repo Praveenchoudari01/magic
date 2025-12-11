@@ -6,7 +6,7 @@ from django.conf import settings
 from apps.accounts.utils import perform_logout
 from apps.product_owner.models import Client
 from apps.accounts.models import User, Type
-from apps.client.models import Department, VRDevice, Process, Step, StepContent, OperatorProcess
+from apps.client.models import Department, VRDevice, Process, Step, StepContent, StepContentDetail,StepContentCaptions,StepContentVoiceOver, OperatorProcess
 from django.contrib import messages
 import random
 import string
@@ -20,6 +20,7 @@ import paho.mqtt.client as mqtt
 import json
 import time
 from django.db.models import Count
+import os
 
 # Create your views here.
 def client_home(request):
@@ -574,6 +575,139 @@ def add_step_content(request, step_id):
         "content_types": StepContent.CONTENT_TYPES
     }
     return render(request, "client/process/add_step_content.html", context)
+
+def step_content_details(request, content_id):
+
+    # Get the parent StepContent
+    content = get_object_or_404(StepContent, pk=content_id)
+    content_type = content.get_content_type_display()
+
+    # Get all detail rows for this StepContent
+    details = StepContentDetail.objects.filter(step_content=content).order_by('-created_at')
+    print(details)
+
+    context = {
+        "content": content,
+        "details": details,
+        "content_type": content_type,
+    }
+
+    return render(request, "client/process/step_content_details.html", context)
+
+def add_step_content_detail(request, content_id):
+
+    content = get_object_or_404(StepContent, pk=content_id)
+    content_type = content.content_type  # VIDEO/AUDIO/PDF/IMAGE
+    error = None
+
+    if request.method == "POST":
+        language_id = request.POST.get("language_id")
+        duration_or_no_pages = request.POST.get("duration_or_no_pages")
+        upload_file = request.FILES.get("upload_file")
+        is_active = True if request.POST.get("is_active") == "on" else False
+
+        # Basic file validation
+        if not upload_file:
+            error = "Please upload a file."
+
+        else:
+            ext = os.path.splitext(upload_file.name)[1].lower()
+
+            valid_types = {
+                "video": [".mp4", ".mov", ".mkv"],
+                "audio": [".mp3", ".wav", ".aac"],
+                "pdf":   [".pdf"],
+                "document": [".pdf", ".docx"],
+                "image": [".jpg", ".jpeg", ".png"],
+            }
+
+            if ext not in valid_types.get(content_type, []):
+                allowed = ", ".join(valid_types.get(content_type, []))
+                error = f"Invalid file type. Allowed: {allowed}"
+
+        # Duration / Page Count validation
+        if not duration_or_no_pages:
+            if content_type in ["VIDEO", "AUDIO"]:
+                error = "Duration required for audio/video"
+            else:
+                error = "Page count required"
+
+        if error:
+            return render(request, "client/process/add_step_content_detail.html", {
+                "content": content,
+                "error": error,
+                "language_id": language_id,
+                "duration_or_no_pages": duration_or_no_pages,
+                "is_active": is_active,
+            })
+
+        # ---------------------------
+        #  SAVE FILE TO LOCAL STORAGE
+        # ---------------------------
+        upload_folder = os.path.join(settings.MEDIA_ROOT, "step_content")
+
+        os.makedirs(upload_folder, exist_ok=True)
+
+        # create unique filename
+        saved_filename = f"{content_id}_{upload_file.name}"
+        saved_path = os.path.join(upload_folder, saved_filename)
+
+        # write file to media folder manually
+        with open(saved_path, "wb+") as destination:
+            for chunk in upload_file.chunks():
+                destination.write(chunk)
+
+        # final URL stored in DB (MEDIA_URL + relative path)
+        file_url = f"{settings.MEDIA_URL}step_content/{saved_filename}"
+
+        # ---------------------------
+        #  SAVE DB RECORD
+        # ---------------------------
+        StepContentDetail.objects.create(
+            step_content=content,
+            language_id=language_id,
+            file_url=file_url,
+            duration_or_no_pages=int(duration_or_no_pages),
+            is_active=is_active
+        )
+
+        return redirect("client:step_content_details", content_id=content_id)
+
+    return render(request, "client/process/add_step_content_detail.html", {
+        "content": content
+    })
+
+def voice_over_list(request, detail_id):
+    detail = get_object_or_404(StepContentDetail, pk=detail_id)
+    voice_overs = StepContentVoiceOver.objects.filter(step_content_detail=detail)
+    return render(request, "client/process/voice_over_list.html", {
+        "detail": detail,
+        "voice_overs": voice_overs,
+    })
+
+def caption_list(request, detail_id):
+    detail = get_object_or_404(StepContentDetail, pk=detail_id)
+    print(detail.__dict__)
+    print(detail.step_content_detail_id)
+    captions = StepContentCaptions.objects.filter(step_content_voice_over_id=detail.step_content_detail_id)
+    print(captions)
+    print(captions.__dict__)
+    # Note: you wrote FK to StepContentDetail for captions – using that.
+    return render(request, "client/process/caption_list.html", {
+        "detail": detail,
+        "captions": captions,
+    })
+
+def add_voice_over(request, detail_id):
+    detail = get_object_or_404(StepContentDetail, pk=detail_id)
+    # your logic for uploading voice-over files
+    return render(request, "client/process/add_voice_over.html", {"detail": detail})
+
+
+def add_captions(request, detail_id):
+    detail = get_object_or_404(StepContentDetail, pk=detail_id)
+    # your logic for uploading captions
+    return render(request, "client/process/add_captions.html", {"detail": detail})
 
 def operator_process_list(request, process_id):
     if "user_id" not in request.session:
