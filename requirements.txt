@@ -7,7 +7,8 @@ fastapi-0.123.0 == pip install fastapi
 python_jose-3.5.0 == pip install python-jose
 httpagentparser-1.9.5 == pip install httpagentparser
 paho-mqtt-2.1.0 == pip install paho-mqtt
-
+Installing collected packages: urllib3, python-dateutil, jmespath, botocore, s3transfer, boto3
+Successfully installed boto3-1.42.12 botocore-1.42.12 jmespath-1.0.1 python-dateutil-2.9.0.post0 s3transfer-0.16.0 urllib3-2.6.2 == pip install boto3
 
 
 # To run API's
@@ -16,7 +17,7 @@ uvicorn api.processes:app --reload --host 127.0.0.1 --port 9091 --reload
 #To test get/Operators API in postman
 Method = GET
 URL = http://127.0.0.1:9091/operators
-Headers (client-id = 1, device-id = 1)
+Headers (api-key = client_id:device_id)
 
 
 

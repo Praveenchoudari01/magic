@@ -1,0 +1,83 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <h3 class="fw-bold">Update Content Details</h3>
+
+  <h6 class="text-secondary">
+    Content Type: <strong>{{ content.get_content_type_display }}</strong>
+  </h6>
+
+  <hr>
+
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Language -->
+    <div class="mb-3">
+      <label class="form-label">Language</label>
+      <select name="language_id" class="form-select" required>
+        <option value="EN" {% if detail.language_id == "EN" %}selected{% endif %}>English</option>
+        <option value="TEL" {% if detail.language_id == "TEL" %}selected{% endif %}>Telugu</option>
+        <option value="HIN" {% if detail.language_id == "HIN" %}selected{% endif %}>Hindi</option>
+        <option value="KAN" {% if detail.language_id == "KAN" %}selected{% endif %}>Kannada</option>
+        <option value="MAL" {% if detail.language_id == "MAL" %}selected{% endif %}>Malayalam</option>
+      </select>
+
+    </div>
+
+    <!-- File Upload (Optional) -->
+    <div class="mb-3">
+      <label class="form-label">
+        Replace File (leave empty to keep current)
+      </label>
+      <input type="file" name="upload_file" class="form-control">
+      <small class="text-muted">
+        Current file:
+        <a href="{{ detail.file_url }}" target="_blank">View</a>
+      </small>
+    </div>
+
+    <!-- Duration / Pages -->
+    <div class="mb-3">
+      <label class="form-label">
+        {% if content.content_type == "video" or content.content_type == "audio" %}
+          Duration (seconds)
+        {% else %}
+          Number of Pages
+        {% endif %}
+      </label>
+
+      <input type="number"
+             name="duration_or_no_pages"
+             class="form-control"
+             value="{{ detail.duration_or_no_pages }}"
+             required>
+    </div>
+
+    <!-- Active -->
+    <div class="form-check mb-3">
+      <input type="checkbox"
+             name="is_active"
+             class="form-check-input"
+             {% if detail.is_active %}checked{% endif %}>
+      <label class="form-check-label">Active</label>
+    </div>
+
+    <button class="btn btn-primary">Update</button>
+
+    <a href="{% url 'client:step_content_details' content.step_content_id %}"
+       class="btn btn-secondary">
+      Cancel
+    </a>
+
+  </form>
+
+</div>
+
+{% endblock %}

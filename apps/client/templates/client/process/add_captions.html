@@ -1,0 +1,93 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <h3 class="fw-bold">Add Caption File</h3>
+
+  <h6 class="text-secondary">
+    Step Content Detail ID:
+    <strong>{{ detail.id }}</strong>
+  </h6>
+
+  <hr>
+
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Caption File Type -->
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Caption File Type</label>
+      <select name="caption_file_type" class="form-select" required>
+        <option value="">Select File Type</option>
+        <option value="vtt">WebVTT (.vtt)</option>
+        <option value="srt">SubRip (.srt)</option>
+      </select>
+    </div>
+
+    <!-- File Upload -->
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Upload Caption File</label>
+      <input
+        type="file"
+        name="upload_file"
+        class="form-control"
+        accept=".vtt,.srt"
+        required
+      >
+      <small class="text-muted">
+        Allowed formats: .vtt, .srt
+      </small>
+    </div>
+
+    <!-- Buttons -->
+    <div class="d-flex gap-2 mt-4">
+      <button
+        type="submit"
+        class="btn text-white px-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+        Upload
+      </button>
+
+      <a href="{% url 'client:caption_list' detail.step_content_detail_id %}"
+         class="btn btn-secondary">
+        Cancel
+      </a>
+    </div>
+
+  </form>
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const fileInput = document.querySelector('input[name="upload_file"]');
+  const typeSelect = document.querySelector('select[name="caption_file_type"]');
+
+  fileInput.addEventListener("change", function () {
+    if (!typeSelect.value) {
+      alert("Please select caption file type first.");
+      fileInput.value = "";
+      return;
+    }
+
+    const ext = fileInput.value.split(".").pop().toLowerCase();
+    if (ext !== typeSelect.value) {
+      alert(
+        "File extension does not match selected type (" +
+        typeSelect.value.toUpperCase() +
+        ")"
+      );
+      fileInput.value = "";
+    }
+  });
+
+});
+</script>
+
+{% endblock %}

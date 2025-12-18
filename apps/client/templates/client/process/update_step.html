@@ -1,0 +1,81 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container">
+
+    <h2 class="fw-bold mb-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+        Update Process
+    </h2>
+
+    <div class="card border-1 rounded-3 shadow-sm" style="background-color: #ffffff00;">
+        <div class="card-body p-4">
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="row g-3">
+
+                    <!-- Step Name -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">
+                            Step Name 
+                        </label>
+                        <input type="text"
+                               name="step_name"
+                               id="step_name"
+                               class="form-control"
+                               value="{{ step.step_name }}"
+                               required>
+                    </div>
+
+                    <!-- Process Description -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">
+                            Step Description
+                        </label>
+                        <input type="text"
+                               name="step_desc"
+                               id="step_desc"
+                               class="form-control"
+                               value="{{ step.step_desc }}"
+                               required>
+                    </div>
+                    
+                    <!-- Est time  -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">
+                            Est Time<small> in seconds </small>
+                        </label>
+                        <input type="number"
+                               name="est_step_time"
+                               id="est_step_time"
+                               class="form-control"
+                               value="{{ step.est_step_time }}"
+                               required>
+                    </div>
+
+                </div>
+
+                <!-- Buttons -->
+                <div class="mt-4 d-flex gap-3">
+                    <button type="submit"
+                            class="btn text-white px-4"
+                            style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+                        Update Process
+                    </button>
+
+                    <a href="{% url 'client:step_list' step.process_id %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

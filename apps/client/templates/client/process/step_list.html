@@ -2,17 +2,18 @@
 {% block content %}
 
 <div class="container ">
-  <!-- Breadcrumb -->
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{% url 'client:processes' %}">Processes</a></li>
-      <li class="breadcrumb-item active" aria-current="page">{{ process.process_name }}</li>
-    </ol>
-  </nav>
   
+  <h2 class="fw-bold mb-0">Process : {{ process.process_name }}</h2>
   <!-- Page Header -->
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2 header-responsive">
-    <h2 class="fw-bold mb-0">Process : {{ process.process_name }}</h2>
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'client:processes' %}">Processes</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ process.process_name }}</li>
+      </ol>
+    </nav>
+    
 
     <div class="d-flex flex-wrap gap-2 action-buttons">
       <a href="{% url 'client:add_step' process.process_id %}" 
@@ -38,6 +39,7 @@
           <th>Sl No</th>
           <th>Step Name</th>
           <th>Description</th>
+          <th>Est Time (sec)</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
@@ -52,6 +54,7 @@
             </a>
           </td>
           <td>{{ step.step_desc }}</td>
+          <td>{{ step.est_step_time }} <small>sec</small> </td>
           <td data-export="{{ step.is_active|yesno:'Active,Inactive' }}">
             {% if step.is_active %}
               <span class="badge bg-success">Active</span>
@@ -60,14 +63,14 @@
             {% endif %}
           </td>
           <td>
-            <a href="#" class="text-primary me-2" title="Edit">
+            <a href="{% url 'client:update_step' step.step_id %}" class="text-primary me-2" title="Edit">
               <i class="bi bi-pencil-fill fs-6"></i></a>
             {% if step.is_active %}
-              <a href="#" class="text-success me-2" title="Deactivate">
+              <a href="{% url 'client:step_deactivation' step.step_id %}" class="text-success me-2" title="Deactivate">
                 <i class="bi bi-toggle-on fs-5"></i>
               </a>
             {% else %}
-              <a href="#" class="text-danger me-2" title="Activate">
+              <a href="{% url 'client:step_activation' step.step_id %}" class="text-danger me-2" title="Activate">
                 <i class="bi bi-toggle-off fs-5"></i>
               </a>
             {% endif %}
@@ -76,6 +79,11 @@
         {% empty %}
         <tr>
           <td colspan="5" class="text-center py-3">No steps added for this process.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
         </tr>
         {% endfor %}
       </tbody>

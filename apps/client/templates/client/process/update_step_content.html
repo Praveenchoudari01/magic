@@ -1,0 +1,70 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <div class="card shadow-sm p-4">
+    <form method="POST">
+      {% csrf_token %}
+
+      <!-- Content Name -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Content Name</label>
+        <input type="text"
+               name="name"
+               class="form-control"
+               value="{{ content.name }}"
+               placeholder="Enter content name"
+               required>
+      </div>
+
+      <!-- Description -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Description</label>
+        <textarea name="desc"
+                  class="form-control"
+                  rows="3"
+                  placeholder="Enter description"
+                  required>{{ content.desc }}</textarea>
+      </div>
+
+      <!-- Content Type -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Content Type</label>
+        <select name="content_type" class="form-select" required>
+          <option value="">Select Type</option>
+          {% for value, label in content_types %}
+            <option value="{{ value }}"
+              {% if content.content_type == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Buttons -->
+      <div class="d-flex gap-2 mt-4">
+        <button type="submit"
+                class="btn text-white px-4"
+                style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+          Update
+        </button>
+
+        <a href="{% url 'client:step_contents' content.step.step_id  %}"
+           class="btn btn-secondary">
+          Cancel
+        </a>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<style>
+  @media (max-width: 768px) {
+    h3 { font-size: 1.4rem; }
+    .card { padding: 1rem !important; }
+  }
+</style>
+
+{% endblock %}

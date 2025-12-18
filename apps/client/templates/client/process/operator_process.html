@@ -13,7 +13,7 @@
         {{ process.process_name }}
       </a>
     </h2>
-
+    
     <div class="d-flex flex-wrap gap-2 action-buttons">
 
       <!-- Add Mapping -->
@@ -27,7 +27,10 @@
               data-bs-toggle="modal" data-bs-target="#exportModal">
         <i class="bi bi-download"></i>&nbsp;Export
       </button>
-
+      <a href="{% url 'client:processes' %}" 
+        class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+      </a>
     </div>
   </div>
   <hr class="mb-0">
@@ -38,6 +41,7 @@
       <thead class="table-dark">
         <tr>
           <th>Sl No</th>
+          <th>Process Name</th>
           <th>Operator Name</th>
           <th>Email</th>
           <th>Status</th>
@@ -49,11 +53,12 @@
         {% for m in mappings %}
         <tr>
           <td>{{ forloop.counter }}</td>
+          <td>{{ m.process.process_name }}</td>
           <td>{{ m.operator.name }}</td>
           <td>{{ m.operator.email }}</td>
 
-          <td>
-            {% if m.operator.is_active %}
+          <td data-export="{{ m.is_active|yesno:'Active,Inactive' }}">
+            {% if m.is_active %}
               <span class="badge bg-success">Active</span>
             {% else %}
               <span class="badge bg-danger">Inactive</span>
@@ -64,12 +69,12 @@
             <a href="#" class="text-primary me-2" title="Edit">
               <i class="bi bi-pencil-fill fs-6"></i></a>
 
-            {% if process.is_active %}
-              <a href="#" class="text-success me-2" title="Deactivate">
+            {% if m.is_active %}
+              <a href="{% url 'client:deactivate_mapping' m.operator_process_id %}" class="text-success me-2" title="Deactivate">
                 <i class="bi bi-toggle-on fs-5"></i>
               </a>
             {% else %}
-              <a href="#" class="text-danger me-2" title="Activate">
+              <a href="{% url 'client:activate_mapping' m.operator_process_id %}" class="text-danger me-2" title="Activate">
                 <i class="bi bi-toggle-off fs-5"></i>
               </a>
             {% endif %}
@@ -78,6 +83,10 @@
         {% empty %}
         <tr>
           <td colspan="5" class="text-center py-3">No Operators Mapped</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -119,25 +128,6 @@
     </div>
   </div>
 </div>
-
-<!-- Toast Container -->
-<div id="toastContainer" class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 1100;">
-  {% if toast_message %}
-    <div id="toastMessage" class="toast align-items-center text-white border-0
-        {% if toast_type == 'success' %}bg-success{% else %}bg-warning{% endif %}" 
-        role="alert" aria-live="assertive" aria-atomic="true" 
-        data-bs-animation="true" data-bs-autohide="true" data-bs-delay="2000">
-      <div class="d-flex">
-        <div class="toast-body">
-          {{ toast_message }}
-        </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    </div>
-  {% endif %}
-</div>
-
-
 
 <!-- CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">

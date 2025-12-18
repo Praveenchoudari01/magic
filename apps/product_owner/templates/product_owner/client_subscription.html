@@ -1,0 +1,107 @@
+{% extends 'product_owner/base_template.html' %}
+{% block title %}Manage Client Subscription{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+    <h2 class="fw-bold mb-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+        Manage Client Subscription
+    </h2>
+
+    <form method="POST"
+          action=""
+          class="p-4 border rounded-3 shadow-sm bg-white">
+        {% csrf_token %}
+
+        <div class="row g-3">
+
+            <!-- Client Name (Read Only) -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">Client Name</label>
+                <input type="text"
+                       class="form-control border-bottom"
+                       value="{{ client.client_name }}"
+                       disabled>
+            </div>
+
+            <!-- No of Devices -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">
+                    No of Devices <span class="text-danger">*</span>
+                </label>
+                <input type="number"
+                       name="no_of_devices"
+                       class="form-control border-bottom"
+                       min="0"
+                       required
+                       value="{{ subscription.no_of_devices|default:0 }}">
+            </div>
+
+            <!-- No of Processes -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">
+                    No of Processes <span class="text-danger">*</span>
+                </label>
+                <input type="number"
+                       name="no_of_processes"
+                       class="form-control border-bottom"
+                       min="0"
+                       required
+                       value="{{ subscription.no_of_processes|default:0 }}">
+            </div>
+
+            <!-- No of Operators -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">
+                    No of Operators <span class="text-danger">*</span>
+                </label>
+                <input type="number"
+                       name="no_of_operators"
+                       class="form-control border-bottom"
+                       min="0"
+                       required
+                       value="{{ subscription.no_of_operators|default:0 }}">
+            </div>
+
+            <!-- Status -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">
+                    Subscription Status <span class="text-danger">*</span>
+                </label>
+                <select name="status" class="form-select border-bottom" required>
+                    <option value="ACTIVE"
+                        {% if subscription.status == 'ACTIVE' %}selected{% endif %}>
+                        Active
+                    </option>
+                    <option value="INACTIVE"
+                        {% if subscription.status == 'INACTIVE' %}selected{% endif %}>
+                        Inactive
+                    </option>
+                    <option value="SUSPENDED"
+                        {% if subscription.status == 'SUSPENDED' %}selected{% endif %}>
+                        Suspended
+                    </option>
+                </select>
+            </div>
+
+        </div>
+
+        <!-- Buttons -->
+        <div class="mt-4 d-flex gap-3">
+            <button type="submit"
+                    class="btn text-white px-4"
+                    style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+                Save Subscription
+            </button>
+            <a href="{% url 'productowner:dashboard_client' %}"
+               class="btn btn-secondary px-4">
+                Cancel
+            </a>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

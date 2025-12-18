@@ -1,0 +1,62 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <h3 class="fw-bold">Update Caption</h3>
+  <hr>
+
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Caption Type -->
+    <div class="mb-3">
+      <label class="form-label">Caption Type</label>
+      <select name="caption_file_type" class="form-select" required>
+        <option value="vtt" {% if caption.caption_file_type == "vtt" %}selected{% endif %}>WebVTT</option>
+        <option value="srt" {% if caption.caption_file_type == "srt" %}selected{% endif %}>SRT</option>
+      </select>
+    </div>
+    <!-- EXISTING FILE -->
+    <div class="mb-3">
+      <label class="form-label">Current Caption File</label>
+
+      <a href="{{ caption.file_url }}"
+         target="_blank"
+         class="btn btn-outline-primary btn-sm">
+        View / Download Caption
+      </a>
+
+      <small class="text-muted d-block mt-1">
+        Upload a new file only if you want to replace this caption.
+      </small>
+    </div>
+
+    <!-- OPTIONAL FILE REPLACE -->
+    <div class="mb-3">
+      <label class="form-label">Replace Caption File (Optional)</label>
+      <input type="file" name="upload_file" class="form-control">
+    </div>
+
+    <!-- ACTIVE -->
+    <div class="form-check mb-3">
+      <input type="checkbox" name="is_active"
+             class="form-check-input"
+             {% if caption.is_active %}checked{% endif %}>
+      <label class="form-check-label">Active</label>
+    </div>
+
+    <button class="btn btn-primary">Update</button>
+    <a href="{% url 'client:caption_list' caption.step_content_voice_over_id %}"
+       class="btn btn-secondary">
+      Cancel
+    </a>
+
+  </form>
+
+</div>
+{% endblock %}

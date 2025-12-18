@@ -1,14 +1,34 @@
 {% extends "client/client_dashboard.html" %}
 {% block content %}
 <div class="container">
-
-  <p><strong>Content Detail:</strong> {{ detail.step_content.name }} — {{ detail.language_id }}</p>
-
+  <h2 class="fw-bold mb-0"><span style="font-size: 20px;">Captions for : </span>  {{ detail.step_content }} </h2>
   <div class="d-flex justify-content-between align-items-center mb-2">
-    <h2 class="fw-bold">Captions</h2>
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'client:processes' %}">Processes</a></li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'client:step_list' detail.step_content.step.process.process_id %}">
+            {{ detail.step_content.step.process.process_name }}
+          </a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'client:step_contents' detail.step_content.step_id %}">
+              {{ detail.step_content.step }}
+          </a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'client:step_content_details' detail.step_content_id %}">
+              {{ detail.step_content }}
+          </a>
+        </li>
+        <li class="breadcrumb-item active">Captions</li>
+      </ol>
+    </nav>
     <div class="d-flex gap-2">
-      <a href="{% url 'client:add_captions' detail.step_content_id  %}"
-         class="btn btn-primary">
+      <a href="{% url 'client:add_captions' detail.step_content_detail_id  %}"
+         class="btn btn-primary"
+         style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
          <i class="bi bi-plus-lg"></i>&nbsp;Add Caption
       </a>
       <button class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#exportModal">
@@ -16,12 +36,13 @@
       </button>
     </div>
   </div>
-
+  <hr>
   <div class="table-responsive">
     <table id="captionTable" class="table table-striped align-middle w-100">
       <thead class="table-dark">
         <tr>
           <th>Sl No</th>
+          <th>Name</th>
           <th>Caption Type</th>
           <th>Active</th>
           <th>Actions</th>
@@ -31,6 +52,7 @@
         {% for c in captions %}
         <tr>
           <td>{{ forloop.counter }}</td>
+          <td>{{ c.caption_filename }}</td>
           <td>{{ c.caption_file_type }}</td>
           <td>
             {% if c.is_active %}
@@ -40,21 +62,25 @@
             {% endif %}
           </td>
           <td>
-            <a href="#"
+            <a href="{% url 'client:update_caption' c.caption_id %}"
                class="text-primary me-2" title="Edit"><i class="bi bi-pencil-fill fs-6"></i></a>
 
             {% if c.is_active %}
-              <a href="#"
+              <a href="{% url 'client:deactivate_caption' c.caption_id %}"
                  class="text-success" title="Deactivate"><i class="bi bi-toggle-on fs-5"></i></a>
             {% else %}
-              <a href = "#"
+              <a href = "{% url 'client:activate_caption' c.caption_id %}"
                  class="text-danger" title="Activate"><i class="bi bi-toggle-off fs-5"></i></a>
             {% endif %}
           </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="4" class="text-center py-3">No captions added.</td>
+          <td colspan="5" class="text-center py-3">No captions added.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -111,9 +137,9 @@
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
-$(document).ready(function() {
+$(document).ready(function () {
 
-  const table = $('#stepContentTable').DataTable({
+  const table = $('#captionTable').DataTable({
     scrollX: true,
     responsive: false,
     pageLength: 10,
@@ -124,29 +150,62 @@ $(document).ready(function() {
     autoWidth: false,
     language: {
       search: "_INPUT_",
-      searchPlaceholder: "Search contents..."
+      searchPlaceholder: "Search captions..."
     },
     columnDefs: [
-      { orderable: false, targets: [0, 5] }
+      { orderable: false, targets: [0, 4] } // Sl No & Actions
     ],
     dom: '<"top d-flex justify-content-end align-items-center mb-2"f>rt<"bottom d-flex justify-content-end align-items-center mt-2"ip>',
     buttons: [
-      { extend: 'csv', className: 'd-none', exportOptions: { columns: [0,1,2,3,4] }},
-      { extend: 'excel', className: 'd-none', exportOptions: { columns: [0,1,2,3,4] }},
-      { extend: 'pdf', className: 'd-none', exportOptions: { columns: [0,1,2,3,4] }},
-      { extend: 'print', className: 'd-none', exportOptions: { columns: [0,1,2,3,4] }}
+      {
+        extend: 'csv',
+        className: 'd-none',
+        exportOptions: { columns: [0, 1, 2, 3] }
+      },
+      {
+        extend: 'excel',
+        className: 'd-none',
+        exportOptions: { columns: [0, 1, 2, 3] }
+      },
+      {
+        extend: 'pdf',
+        className: 'd-none',
+        exportOptions: { columns: [0, 1, 2, 3] }
+      },
+      {
+        extend: 'print',
+        className: 'd-none',
+        exportOptions: { columns: [0, 1, 2, 3] }
+      }
     ]
   });
 
   function closeModal() {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    const modalEl = document.getElementById('exportModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
     modal.hide();
   }
 
-  $("#exportCsv").click(() => { table.button('.buttons-csv').trigger(); closeModal(); });
-  $("#exportExcel").click(() => { table.button('.buttons-excel').trigger(); closeModal(); });
-  $("#exportPdf").click(() => { table.button('.buttons-pdf').trigger(); closeModal(); });
-  $("#exportPrint").click(() => { table.button('.buttons-print').trigger(); closeModal(); });
+  $("#exportCsv").on('click', function () {
+    table.button('.buttons-csv').trigger();
+    closeModal();
+  });
+
+  $("#exportExcel").on('click', function () {
+    table.button('.buttons-excel').trigger();
+    closeModal();
+  });
+
+  $("#exportPdf").on('click', function () {
+    table.button('.buttons-pdf').trigger();
+    closeModal();
+  });
+
+  $("#exportPrint").on('click', function () {
+    table.button('.buttons-print').trigger();
+    closeModal();
+  });
+
 });
 </script>
 

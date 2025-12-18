@@ -32,8 +32,9 @@
     <table id="userTable" class="table table-striped align-middle w-100">
       <thead class="table-dark">
         <tr>
-          <th>#</th>
+          <th>Sl No</th>
           <th>Name</th>
+          <th>Operator Id</th>
           <th>Email</th>
           <th>Mobile</th>
           <th>Department</th>
@@ -47,6 +48,7 @@
         <tr>
           <td>{{ forloop.counter }}</td>
           <td>{{ user.name }}</td>
+          <td>{{ user.operator_id }}</td>
           <td>{{ user.email }}</td>
           <td>{{ user.mobile }}</td>
           <td>{% if user.department %}{{ user.department.department_name }}{% else %}-{% endif %}</td>
@@ -81,6 +83,14 @@
         {% empty %}
         <tr>
           <td colspan="8" class="text-center py-3">No Users Added</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
         </tr>
         {% endfor %}
       </tbody>

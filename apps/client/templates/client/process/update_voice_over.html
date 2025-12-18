@@ -1,0 +1,81 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <h3 class="fw-bold">Update Voice Over</h3>
+  <hr>
+
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- LANGUAGE (EDITABLE) -->
+    <div class="mb-3">
+      <label class="form-label">Language</label>
+      <select name="language_id" class="form-select" required>
+        <option value="">Select Language</option>
+        <option value="EN"  {% if voice_over.language_id == "EN" %}selected{% endif %}>English</option>
+        <option value="TEL" {% if voice_over.language_id == "TEL" %}selected{% endif %}>Telugu</option>
+        <option value="HIN" {% if voice_over.language_id == "HIN" %}selected{% endif %}>Hindi</option>
+        <option value="KAN" {% if voice_over.language_id == "KAN" %}selected{% endif %}>Kannada</option>
+        <option value="MAL" {% if voice_over.language_id == "MAL" %}selected{% endif %}>Malayalam</option>
+      </select>
+    </div>
+
+    <!-- FILE TYPE (EDITABLE) -->
+    <div class="mb-3">
+      <label class="form-label">Voice Over Type</label>
+      <select name="voice_over_file_type" class="form-select" required>
+        <option value="audio"
+          {% if voice_over.voice_over_file_type == "audio" %}selected{% endif %}>
+          Audio
+        </option>
+        <option value="tts"
+          {% if voice_over.voice_over_file_type == "tts" %}selected{% endif %}>
+          Text To Speech
+        </option>
+      </select>
+    </div>
+
+    <!-- EXISTING FILE PREVIEW -->
+    <div class="mb-3">
+      <label class="form-label">Current Voice Over</label>
+      <audio controls class="w-100">
+        <source src="{{ voice_over.file_url }}">
+        Your browser does not support audio playback.
+      </audio>
+
+      <small class="text-muted d-block mt-1">
+        Upload a new file only if you want to replace this voice over.
+      </small>
+    </div>
+
+    <!-- OPTIONAL FILE REPLACE -->
+    <div class="mb-3">
+      <label class="form-label">Replace Voice Over (Optional)</label>
+      <input type="file" name="upload_file" class="form-control">
+    </div>
+
+    <!-- ACTIVE -->
+    <div class="form-check mb-3">
+      <input type="checkbox"
+             name="is_active"
+             class="form-check-input"
+             {% if voice_over.is_active %}checked{% endif %}>
+      <label class="form-check-label">Active</label>
+    </div>
+
+    <button class="btn btn-primary">Update</button>
+    <a href="{% url 'client:voice_over_list' voice_over.step_content_detail_id %}"
+       class="btn btn-secondary">
+      Cancel
+    </a>
+
+  </form>
+
+</div>
+{% endblock %}

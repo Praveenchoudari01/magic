@@ -10,7 +10,7 @@
             style="background: linear-gradient(90deg, #0079FF, #7D3CFF, #FF007F); 
                    -webkit-background-clip: text; 
                    -webkit-text-fill-color: transparent;">
-            Client / SPOC Management
+            Client
         </h2>
 
         <div class="d-flex flex-wrap gap-2">
@@ -40,6 +40,7 @@
                     <th>Email</th>
                     <th>Mobile</th>
                     <th>Address</th>
+                    <th>Subscription</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -53,6 +54,25 @@
                     <td>{{ client.spoc_email }}</td>
                     <td>{{ client.spoc_mobile }}</td>
                     <td>{{ client.client_address }}</td>
+                    {% if client.subscription %}
+                        <td>
+                            <p class="line">No of devices  <span>{{ client.subscription.no_of_devices }}</span></p>
+                            <p class="line">No of processes  <span>{{ client.subscription.no_of_processes }}</span></p>
+                            <p class="line">No of Operators  <span>{{ client.subscription.no_of_operators }}</span></p>
+                            <a href="{% url 'product_owner:manage_client_subscription' client.client_id %}" style="text-decoration: none;">
+                                Manage
+                            </a>
+                        </td>
+                    {% else %}
+                        <td>
+                            <p class="line">No of devices  <span>0</span></p>
+                            <p class="line">No of processes  <span>0</span></p>
+                            <p class="line">No of Operators  <span>0</span></p>
+                            <a href="{% url 'product_owner:manage_client_subscription' client.client_id %}" style="text-decoration: none;">
+                                Add
+                            </a>
+                        </td>
+                    {% endif %}
                     <td data-export="{{ client.is_active|yesno:'Active,Inactive' }}">
                         {% if client.is_active %}
                             <span class="badge bg-success">Active</span>
@@ -61,14 +81,14 @@
                         {% endif %}
                     </td>
                     <td>
-                        <a href="#" class="text-primary me-2" title="Edit">
+                        <a href="{% url 'productowner:edit_client' client.client_id %}" class="text-primary me-2" title="Edit">
                             <i class="bi bi-pencil-fill fs-6"></i></a>
                         {% if client.is_active %}
-                            <a href="#" class="text-success me-2" title="Deactivate">
+                            <a href="{% url 'product_owner:deactivate_client' client.client_id %}" class="text-success me-2" title="Deactivate">
                                 <i class="bi bi-toggle-on fs-5"></i>
                             </a>
                         {% else %}
-                            <a href="#" class="text-danger me-2" title="Activate">
+                            <a href="{% url 'product_owner:activate_client' client.client_id %}" class="text-danger me-2" title="Activate">
                                 <i class="bi bi-toggle-off fs-5"></i>
                             </a>
                         {% endif %}
@@ -76,7 +96,15 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td class="text-center" colspan="8">No Clients Added Yet</td>
+                    <td class="text-center" colspan="9">No Clients Added Yet</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -170,6 +198,17 @@ $(document).ready(function() {
 
 <style>
 /* Responsive header adjustments */
+.line {
+    display: flex;
+    justify-content: space-between; /* pushes text left + span right */
+    margin: 0;
+    padding: 0;
+  }
+
+  .line span {
+    color: #3b118e;
+    font-weight: bold; /* optional */
+  }
 @media (max-width: 768px) {
     h2 {
         font-size: 1.4rem;

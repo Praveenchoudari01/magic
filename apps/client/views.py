@@ -21,6 +21,34 @@ import json
 import time
 from django.db.models import Count
 import os
+from urllib.parse import urlparse
+import uuid
+import environ
+import boto3
+from django.conf import settings
+
+#AWS Importing
+env = environ.Env()
+AWS_BUCKET = env("AWS_BUCKET")
+AWS_REGION = env("AWS_REGION")
+AWS_ACCESS_KEY = env("AWS_ACCESS_KEY")
+AWS_SECRET_KEY = env("AWS_SECRET_KEY")
+
+print("bucket ", AWS_BUCKET)
+print("Region ",AWS_REGION)
+print("Access key", AWS_ACCESS_KEY)
+print("Secret key ", AWS_SECRET_KEY)
+
+aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+print("aws access key id is", aws_access_key_id)
+
+#S3 bucket to upload the files.
+s3 = boto3.client(
+    "s3",
+    region_name=AWS_REGION,
+    aws_access_key_id=AWS_ACCESS_KEY,
+    aws_secret_access_key=AWS_SECRET_KEY
+)
 
 # Create your views here.
 def client_home(request):
@@ -50,7 +78,7 @@ def client_user_list(request):
     # print("client_admin is ", client_admin)
 
     # fetch all users of the same client
-    users = User.objects.filter(client=client_admin.client,  type_id=4).order_by("user_id")
+    users = User.objects.filter(client=client_admin.client,  type_id=4).order_by("id")
     # print("users ",users)
 
     # fetch departments for dropdown
@@ -88,6 +116,7 @@ def add_client_user(request):
         name = request.POST.get("name").strip()
         email = request.POST.get("email").strip()
         mobile = request.POST.get("mobile").strip()
+        operator_id = request.POST.get("operatorid").strip()
         address = request.POST.get("address").strip()
         department_id = request.POST.get("department_id")
         is_department_head = request.POST.get("is_department_head") == "yes"
@@ -102,6 +131,7 @@ def add_client_user(request):
             department_id=department_id,
             type_id=Type.objects.get(pk=4),  
             is_department_head=is_department_head,
+            operator_id = operator_id,
             is_active=True,
             created_by=client_admin,
             created_at=timezone.now(),
@@ -128,6 +158,7 @@ def user_update(request, pk):
         user.name = request.POST.get('name').strip()
         user.email = request.POST.get('email').strip()
         user.mobile = request.POST.get('mobile').strip()
+        user.operator_id = request.POST.get('operatorid')
         user.address = request.POST.get('address').strip()
         user.department_id = request.POST.get('department_id')
         user.is_department_head = request.POST.get('is_department_head') == 'True'
@@ -370,13 +401,14 @@ def vr_device_register_view(request):
             
             client_name = client.client_name
             client_id = client.client_id
+            print(f"client id is {client_id} and client name is {client_name}")
             payload = {
                 "status": "success",
                 "message": "Device registered successfully",
-                "device_id": vrdevice.device_id,
+                "device_id": str(vrdevice.device_id),
                 "device_name": vrdevice.device_name,
                 "unique_code" : vrdevice.unique_id,
-                "client_id": client_id,
+                "client_id": str(client_id),
                 "client_name": client_name
             }
             code = vrdevice.unique_id
@@ -398,6 +430,40 @@ def get_client_ip(request):
         ip = request.META.get('REMOTE_ADDR')
     return ip
 
+def vr_device_update(request, device_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    device = get_object_or_404(VRDevice, pk=device_id)
+    if request.method == 'POST':
+        device.device_name = request.POST.get('device_name')
+        # device.unique_code = request.POST.get('unique_code')  # also allow updating unique code
+        device.device_model = request.POST.get('device_model')
+        device.device_make = request.POST.get('device_make')
+        device.save()
+        messages.success(request, "VR Device updated successfully!")
+        return redirect('client:vr_device_register_view')  # <-- fixed with namespace
+    return render(request, 'client/vr_device_update.html', {'device': device})
+
+def vr_device_activate(request, device_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    device = get_object_or_404(VRDevice, pk=device_id)
+    device.is_active = True
+    device.save()
+    messages.success(request, "VR Device activated successfully!")
+    return redirect('client:vr_device_list_view')
+
+def vr_device_deactivate(request, device_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    device = get_object_or_404(VRDevice, pk=device_id)
+    device.is_active = False
+    device.save()
+    messages.success(request, "VR Device deactivated successfully!")
+    return redirect('client:vr_device_list_view')
 
 # Process Defining
 def processes(request):
@@ -415,7 +481,7 @@ def processes(request):
     processes_list = (
         Process.objects
         .filter(client_id=client_id)
-        .annotate(operators=Count('operator_processes'))  # <-- Key: operators
+        .annotate(operators=Count('operator_processes')).order_by('id')  # <-- Key: operators
     )
 
     context = {
@@ -455,6 +521,64 @@ def add_process(request):
 
     return render(request, "client/process/process_add.html")
 
+def update_process(request, process_id):
+    # Ensure user logged in
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    # Fetch process (ensure ownership)
+    process = get_object_or_404(
+        Process,
+        pk=process_id,
+    )
+
+    if request.method == "POST":
+        process.process_name = request.POST.get("process_name").strip()
+        process.process_desc = request.POST.get("process_desc").strip()
+        process.est_process_time = request.POST.get("est_process_time")
+        process.no_of_steps = request.POST.get("no_of_steps")
+
+        # updated_at will auto-update here
+        process.save()
+
+        messages.success(request, "Process updated successfully!")
+        return redirect("client:processes")
+
+    return render(
+        request,
+        "client/process/update_process.html",
+        {"process": process}
+    )
+
+# Deactivate Process
+def deactivate_process(request, process_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    process = get_object_or_404(
+        Process,
+        pk=process_id
+    )
+    process.is_active = False
+    process.save()
+
+    messages.success(request, "Process deactivated successfully!")
+    return redirect("client:processes")
+
+# Activate Process
+def activate_process(request, process_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    process = get_object_or_404(
+        Process,
+        pk=process_id
+    )
+
+    process.is_active = True
+    process.save()
+
+    messages.success(request, "Process activated successfully!")
+    return redirect("client:processes")
+
 # Adding the Step for the Process 
 def step_list(request, process_id):
     if "user_id" not in request.session:
@@ -468,7 +592,7 @@ def step_list(request, process_id):
         success = request.session.pop('success_message')
 
     process = get_object_or_404(Process, pk=process_id)
-    steps = Step.objects.filter(process_id=process_id).order_by('step_id')
+    steps = Step.objects.filter(process_id=process_id).order_by('id')
 
     context = {
         "process": process,
@@ -534,6 +658,57 @@ def add_step(request, process_id):
         "existing_steps": existing_steps,
     })
 
+# Deactivating the step
+def step_deactivation(request, step_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    print("step_id is ", step_id)
+    step = get_object_or_404(
+        Step,
+        pk=step_id
+    )
+    step.is_active = False
+    step.save()
+    return redirect("client:step_list", process_id=step.process_id)
+
+# Activating the step
+def step_activation(request, step_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    print("step_id is ", step_id)
+    step = get_object_or_404(
+        Step,
+        pk=step_id
+    )
+    step.is_active = True
+    step.save()
+    return redirect("client:step_list", process_id=step.process_id)
+
+# Update Step
+def update_step(request, step_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    step = get_object_or_404(
+        Step,
+        pk = step_id
+    )
+    if request.method == 'POST' :
+        step.step_name = request.POST.get("step_name").strip()
+        step.step_desc = request.POST.get("step_desc").strip()
+        step.est_step_time = request.POST.get("est_step_time")
+
+        step.save()
+        return redirect("client:step_list", process_id=step.process_id)
+    
+    return render(
+        request,
+        "client/process/update_step.html",
+        {"step": step}
+    )
+
 #Step_content
 def step_contents(request, step_id):
     if "user_id" not in request.session:
@@ -542,8 +717,7 @@ def step_contents(request, step_id):
     step = get_object_or_404(Step, step_id=step_id)
 
     # Load all contents for this step
-    contents = StepContent.objects.filter(step=step)
-    print(contents)
+    contents = StepContent.objects.filter(step=step).order_by('id')
 
     return render(request, "client/process/step_content.html", {
         "step": step,
@@ -552,7 +726,10 @@ def step_contents(request, step_id):
 
 # Step content adding
 def add_step_content(request, step_id):
-    step = get_object_or_404(Step, step_id=step_id)
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    step = get_object_or_404(Step, pk=step_id)
 
     if request.method == "POST":
         name = request.POST.get("name")
@@ -576,15 +753,65 @@ def add_step_content(request, step_id):
     }
     return render(request, "client/process/add_step_content.html", context)
 
-def step_content_details(request, content_id):
+#Deactivate step_content
+def deactivate_step_content(request, content_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    content = get_object_or_404(StepContent, pk=content_id)
 
+    content.is_active = False
+    content.save()
+    return redirect("client:step_contents", step_id=content.step_id)
+
+#Deactivate step_content
+def activate_step_content(request, content_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    content = get_object_or_404(StepContent, pk=content_id)
+
+    content.is_active = True
+    content.save()
+    return redirect("client:step_contents", step_id=content.step_id)
+
+#Updating step content
+def update_step_content(request, content_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    content = get_object_or_404(StepContent, step_content_id=content_id)
+
+    if request.method == "POST":
+        content.name = request.POST.get("name").strip()
+        content.desc = request.POST.get("desc").strip()
+        content.content_type = request.POST.get("content_type")
+
+        content.save()
+
+        messages.success(request, "Step content updated successfully.")
+        return redirect("client:step_contents",step_id=content.step.step_id)
+
+    return render(
+        request,
+        "client/process/update_step_content.html",
+        {
+            "content": content,
+            "content_types": StepContent.CONTENT_TYPES
+        }
+    )
+
+#Step content details
+def step_content_details(request, content_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
     # Get the parent StepContent
     content = get_object_or_404(StepContent, pk=content_id)
     content_type = content.get_content_type_display()
 
     # Get all detail rows for this StepContent
     details = StepContentDetail.objects.filter(step_content=content).order_by('-created_at')
-    print(details)
 
     context = {
         "content": content,
@@ -594,8 +821,11 @@ def step_content_details(request, content_id):
 
     return render(request, "client/process/step_content_details.html", context)
 
+#Adding step content details
 def add_step_content_detail(request, content_id):
-
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
     content = get_object_or_404(StepContent, pk=content_id)
     content_type = content.content_type  # VIDEO/AUDIO/PDF/IMAGE
     error = None
@@ -677,6 +907,110 @@ def add_step_content_detail(request, content_id):
         "content": content
     })
 
+#Deactivate step content details
+def deactivate_step_content_detail(request, detail_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    detail = get_object_or_404(StepContentDetail, pk=detail_id)
+    detail.is_active = False
+    detail.save()
+    return redirect("client:step_content_details",content_id=detail.step_content_id)
+
+#Activate step content details
+def activate_step_content_detail(request, detail_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    detail = get_object_or_404(StepContentDetail, pk=detail_id)
+    detail.is_active = True
+    detail.save()
+    return redirect("client:step_content_details",content_id=detail.step_content_id)
+
+def update_step_content_detail(request, detail_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    detail = get_object_or_404(StepContentDetail, pk=detail_id)
+    content = detail.step_content
+    content_type = content.content_type.lower()
+    error = None
+
+    if request.method == "POST":
+        language_id = request.POST.get("language_id")
+        duration_or_no_pages = request.POST.get("duration_or_no_pages")
+        upload_file = request.FILES.get("upload_file")
+        is_active = True if request.POST.get("is_active") == "on" else False
+
+        # ---------------------------
+        # FILE VALIDATION (OPTIONAL)
+        # ---------------------------
+        valid_types = {
+            "video": [".mp4", ".mov", ".mkv"],
+            "audio": [".mp3", ".wav", ".aac"],
+            "pdf":   [".pdf"],
+            "document": [".pdf", ".docx"],
+            "image": [".jpg", ".jpeg", ".png"],
+        }
+
+        if upload_file:
+            ext = os.path.splitext(upload_file.name)[1].lower()
+            if ext not in valid_types.get(content_type, []):
+                allowed = ", ".join(valid_types.get(content_type, []))
+                error = f"Invalid file type. Allowed: {allowed}"
+
+        # Duration / page validation
+        if not duration_or_no_pages:
+            if content_type in ["video", "audio"]:
+                error = "Duration required for audio/video"
+            else:
+                error = "Page count required"
+
+        if error:
+            return render(request, "client/process/update_step_content_detail.html", {
+                "content": content,
+                "detail": detail,
+                "error": error
+            })
+
+        # ---------------------------
+        # FILE SAVE (ONLY IF NEW FILE)
+        # ---------------------------
+        if upload_file:
+            upload_folder = os.path.join(settings.MEDIA_ROOT, "step_content")
+            os.makedirs(upload_folder, exist_ok=True)
+
+            saved_filename = f"{detail.id}_{upload_file.name}"
+            saved_path = os.path.join(upload_folder, saved_filename)
+
+            with open(saved_path, "wb+") as destination:
+                for chunk in upload_file.chunks():
+                    destination.write(chunk)
+
+            detail.file_url = f"{settings.MEDIA_URL}step_content/{saved_filename}"
+
+        # ---------------------------
+        # UPDATE DB FIELDS
+        # ---------------------------
+        detail.language_id = language_id
+        detail.duration_or_no_pages = int(duration_or_no_pages)
+        detail.is_active = is_active
+        detail.save()
+
+        return redirect(
+            "client:step_content_details",
+            content_id=detail.step_content_id
+        )
+
+    return render(
+        request,
+        "client/process/update_step_content_detail.html",
+        {
+            "content": content,
+            "detail": detail
+        }
+    )
+
 def voice_over_list(request, detail_id):
     detail = get_object_or_404(StepContentDetail, pk=detail_id)
     voice_overs = StepContentVoiceOver.objects.filter(step_content_detail=detail)
@@ -685,29 +1019,482 @@ def voice_over_list(request, detail_id):
         "voice_overs": voice_overs,
     })
 
+def add_voice_over(request, detail_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    detail = get_object_or_404(
+        StepContentDetail,
+        pk=detail_id
+    )
+
+    error = None
+
+    languages = {
+                    'EN' : 'English',
+                    'TEL' : 'Telugu',
+                    'HIN' : 'Hindi'
+                }
+    if request.method == "POST":
+        language_id = request.POST.get("language_id")
+        language = request.POST.get("language")  # optional display value
+        # voice_over_file_type = request.POST.get("voice_over_file_type")
+
+        upload_file = request.FILES.get("upload_file")
+        voice_over_file_type = os.path.splitext(upload_file.name)[1].lower()
+        language = languages[language_id] 
+        # ---------------------------
+        # VALIDATIONS
+        # ---------------------------
+        
+        print(language_id)
+        print(language)
+        print(voice_over_file_type)
+        print(upload_file)
+        if not language_id:
+            error = "Language is required."
+        elif not voice_over_file_type:
+            error = "Voice over file type is required."
+        elif not upload_file:
+            error = "Please upload a voice over file."
+
+        # Validate audio file extensions
+        if upload_file:
+            ext = os.path.splitext(upload_file.name)[1].lower()
+            print("file extention is ",ext)
+            allowed_exts = [".mp3", ".wav", ".aac", ".m4a"]
+
+            if ext not in allowed_exts:
+                error = f"Invalid file format. Allowed: mp3, wav, aac, m4a and the file extension is {ext}"
+
+        if error:
+            return render(
+                request,
+                "client/process/add_voice_over.html",
+                {
+                    "detail": detail,
+                    "error": error
+                }
+            )
+
+        # ---------------------------
+        # SAVE FILE LOCALLY
+        # ---------------------------
+        upload_dir = os.path.join(
+            settings.MEDIA_ROOT,
+            "voice_overs"
+        )
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # Unique filename
+        filename = (
+            f"{detail.id}_{language_id}_{uuid.uuid4()}"
+            f"{os.path.splitext(upload_file.name)[1]}"
+        )
+
+        file_path = os.path.join(upload_dir, filename)
+
+        with open(file_path, "wb+") as destination:
+            for chunk in upload_file.chunks():
+                destination.write(chunk)
+
+        file_url = f"{settings.MEDIA_URL}voice_overs/{filename}"
+
+        # ---------------------------
+        # SAVE DB RECORD
+        # ---------------------------
+        StepContentVoiceOver.objects.create(
+            step_content_detail=detail,
+            voice_over_file_type=voice_over_file_type,
+            file_url=file_url,
+            language_id=language_id,
+            language=language,
+            is_active=True
+        )
+
+        messages.success(
+            request,
+            "Voice over uploaded successfully!"
+        )
+
+        return redirect(
+            "client:voice_over_list",
+            detail_id=detail.step_content_detail_id
+        )
+
+    return render(
+        request,
+        "client/process/add_voice_over.html",
+        {
+            "detail": detail
+        }
+    )
+
+def deactivate_voice_over(request, voice_over_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    voice_over = get_object_or_404(
+        StepContentVoiceOver,
+        step_content_voice_over_id=voice_over_id
+    )
+
+    voice_over.is_active = False
+    voice_over.save(update_fields=["is_active"])
+
+    messages.success(request, "Voice over deactivated.")
+
+    return redirect(
+        "client:voice_over_list",
+        detail_id=voice_over.step_content_detail_id
+    )
+
+def activate_voice_over(request, voice_over_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    voice_over = get_object_or_404(
+        StepContentVoiceOver,
+        step_content_voice_over_id=voice_over_id
+    )
+
+    voice_over.is_active = True
+    voice_over.save(update_fields=["is_active"])
+
+    messages.success(request, "Voice over activated.")
+
+    return redirect(
+        "client:voice_over_list",
+        detail_id=voice_over.step_content_detail_id
+    )
+
+def update_voice_over(request, voice_over_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    voice_over = get_object_or_404(
+        StepContentVoiceOver,
+        step_content_voice_over_id=voice_over_id
+    )
+
+    error = None
+
+    LANGUAGE_MAP = {
+        "EN": "English",
+        "TEL": "Telugu",
+        "HIN": "Hindi",
+        "KAN": "Kannada",
+        "MAL": "Malayalam",
+    }
+
+    if request.method == "POST":
+        language_id = request.POST.get("language_id")
+        voice_over_file_type = request.POST.get("voice_over_file_type")
+        upload_file = request.FILES.get("upload_file")
+        is_active = request.POST.get("is_active") == "on"
+
+        # ---------------------------
+        # VALIDATION
+        # ---------------------------
+        if not language_id:
+            error = "Language is required."
+        elif not voice_over_file_type:
+            error = "Voice over file type is required."
+
+        # Validate file only if uploaded
+        if upload_file:
+            ext = os.path.splitext(upload_file.name)[1].lower()
+            allowed_exts = [".mp3", ".wav", ".aac", ".m4a"]
+
+            if ext not in allowed_exts:
+                error = "Invalid audio format. Allowed: mp3, wav, aac, m4a."
+
+        if error:
+            return render(
+                request,
+                "client/process/update_voice_over.html",
+                {
+                    "voice_over": voice_over,
+                    "error": error
+                }
+            )
+
+        # ---------------------------
+        # UPDATE FILE (OPTIONAL)
+        # ---------------------------
+        if upload_file:
+            # delete old file
+            old_path = voice_over.file_url.replace(settings.MEDIA_URL, "")
+            old_full_path = os.path.join(settings.MEDIA_ROOT, old_path)
+
+            if os.path.exists(old_full_path):
+                os.remove(old_full_path)
+
+            # save new file
+            upload_dir = os.path.join(settings.MEDIA_ROOT, "voice_overs")
+            os.makedirs(upload_dir, exist_ok=True)
+
+            filename = (
+                f"{voice_over.step_content_detail_id}_"
+                f"{language_id}_{uuid.uuid4()}"
+                f"{os.path.splitext(upload_file.name)[1]}"
+            )
+
+            full_path = os.path.join(upload_dir, filename)
+
+            with open(full_path, "wb+") as dest:
+                for chunk in upload_file.chunks():
+                    dest.write(chunk)
+
+            voice_over.file_url = f"{settings.MEDIA_URL}voice_overs/{filename}"
+
+        # ---------------------------
+        # UPDATE META FIELDS (THIS WAS MISSING)
+        # ---------------------------
+        voice_over.language_id = language_id
+        voice_over.language = LANGUAGE_MAP.get(language_id, language_id)
+        voice_over.voice_over_file_type = voice_over_file_type
+        voice_over.is_active = is_active
+
+        voice_over.save()
+
+        return redirect(
+            "client:voice_over_list",
+            detail_id=voice_over.step_content_detail_id
+        )
+
+    return render(
+        request,
+        "client/process/update_voice_over.html",
+        {
+            "voice_over": voice_over
+        }
+    )
+
+
 def caption_list(request, detail_id):
     detail = get_object_or_404(StepContentDetail, pk=detail_id)
-    print(detail.__dict__)
-    print(detail.step_content_detail_id)
-    captions = StepContentCaptions.objects.filter(step_content_voice_over_id=detail.step_content_detail_id)
-    print(captions)
-    print(captions.__dict__)
-    # Note: you wrote FK to StepContentDetail for captions – using that.
+
+    captions = StepContentCaptions.objects.filter(
+        step_content_voice_over_id=detail.step_content_detail_id
+    )
+
+    # Add filename attribute to each caption
+    for c in captions:
+        if c.file_url:
+            filename = os.path.basename(urlparse(c.file_url).path)
+
+            # Remove UUID (before first underscore)
+            clean_name = filename.split('_', 1)[1]
+
+            c.caption_filename = clean_name
+        else:
+            c.caption_filename = ""
+
     return render(request, "client/process/caption_list.html", {
         "detail": detail,
         "captions": captions,
     })
 
-def add_voice_over(request, detail_id):
-    detail = get_object_or_404(StepContentDetail, pk=detail_id)
-    # your logic for uploading voice-over files
-    return render(request, "client/process/add_voice_over.html", {"detail": detail})
-
-
 def add_captions(request, detail_id):
-    detail = get_object_or_404(StepContentDetail, pk=detail_id)
-    # your logic for uploading captions
-    return render(request, "client/process/add_captions.html", {"detail": detail})
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    detail = get_object_or_404(
+        StepContentDetail,
+        pk=detail_id
+    )
+
+    error = None
+
+    # Allowed caption types
+    CAPTION_TYPES = {
+        "vtt": "WebVTT",
+        "srt": "SubRip"
+    }
+
+    if request.method == "POST":
+        caption_file_type = request.POST.get("caption_file_type")
+        upload_file = request.FILES.get("upload_file")
+
+        # ---------------------------
+        # VALIDATIONS
+        # ---------------------------
+        if not caption_file_type:
+            error = "Caption file type is required."
+        elif caption_file_type not in CAPTION_TYPES:
+            error = "Invalid caption file type selected."
+        elif not upload_file:
+            error = "Please upload a caption file."
+
+        # Validate extension matches selected type
+        if upload_file:
+            ext = os.path.splitext(upload_file.name)[1].lower().replace(".", "")
+            if ext != caption_file_type:
+                error = (
+                    f"Uploaded file type ({ext}) does not match "
+                    f"selected type ({caption_file_type})."
+                )
+
+        if error:
+            return render(
+                request,
+                "client/process/add_captions.html",
+                {
+                    "detail": detail,
+                    "error": error
+                }
+            )
+
+        # ---------------------------
+        # SAVE FILE LOCALLY
+        # ---------------------------
+        upload_dir = os.path.join(
+            settings.MEDIA_ROOT,
+            "captions"
+        )
+        os.makedirs(upload_dir, exist_ok=True)
+
+        filename = (
+            f"{detail.id}_{uuid.uuid4()}.{caption_file_type}"
+        )
+
+        file_path = os.path.join(upload_dir, filename)
+
+        with open(file_path, "wb+") as destination:
+            for chunk in upload_file.chunks():
+                destination.write(chunk)
+
+        file_url = f"{settings.MEDIA_URL}captions/{filename}"
+
+        # ---------------------------
+        # SAVE DB RECORD
+        # ---------------------------
+        StepContentCaptions.objects.create(
+            step_content_voice_over=detail,
+            caption_file_type=caption_file_type,
+            file_url=file_url,
+            is_active=True
+        )
+
+        messages.success(
+            request,
+            "Caption file uploaded successfully!"
+        )
+
+        return redirect(
+            "client:caption_list",
+            detail_id=detail.step_content_detail_id
+        )
+
+    return render(
+        request,
+        "client/process/add_captions.html",
+        {
+            "detail": detail
+        }
+    )
+
+def deactivate_caption(request, caption_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    caption = get_object_or_404(
+        StepContentCaptions,
+        caption_id=caption_id
+    )
+
+    caption.is_active = False
+    caption.save()
+
+    return redirect(
+        "client:caption_list",
+        detail_id=caption.step_content_voice_over_id
+    )
+
+def activate_caption(request, caption_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    caption = get_object_or_404(
+        StepContentCaptions,
+        caption_id=caption_id
+    )
+
+    caption.is_active = True
+    caption.save()
+
+    return redirect(
+        "client:caption_list",
+        detail_id=caption.step_content_voice_over_id
+    )
+
+def update_caption(request, caption_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+
+    caption = get_object_or_404(
+        StepContentCaptions,
+        caption_id=caption_id
+    )
+
+    detail = caption.step_content_voice_over
+    error = None
+
+    if request.method == "POST":
+        caption_file_type = request.POST.get("caption_file_type")
+        upload_file = request.FILES.get("upload_file")
+        is_active = True if request.POST.get("is_active") == "on" else False
+
+        if not caption_file_type:
+            error = "Caption file type required."
+
+        if upload_file:
+            ext = os.path.splitext(upload_file.name)[1].lower().replace(".", "")
+            print("file type ", ext)
+            if ext != caption_file_type:
+                error = "Uploaded file does not match selected caption type."
+
+        if error:
+            return render(
+                request,
+                "client/process/update_caption.html",
+                {"caption": caption, "error": error}
+            )
+
+        if upload_file:
+            old_path = caption.file_url.replace(settings.MEDIA_URL, "")
+            old_full = os.path.join(settings.MEDIA_ROOT, old_path)
+            if os.path.exists(old_full):
+                os.remove(old_full)
+
+            upload_dir = os.path.join(settings.MEDIA_ROOT, "captions")
+            os.makedirs(upload_dir, exist_ok=True)
+
+            filename = f"{detail.id}_{uuid.uuid4()}.{caption_file_type}"
+            path = os.path.join(upload_dir, filename)
+
+            with open(path, "wb+") as f:
+                for chunk in upload_file.chunks():
+                    f.write(chunk)
+
+            caption.file_url = f"{settings.MEDIA_URL}captions/{filename}"
+
+        caption.caption_file_type = caption_file_type
+        caption.is_active = is_active
+        caption.save()
+
+        return redirect(
+            "client:caption_list",
+            detail_id=detail.step_content_detail_id
+        )
+
+    return render(
+        request,
+        "client/process/update_caption.html",
+        {"caption": caption}
+    )
+
 
 def operator_process_list(request, process_id):
     if "user_id" not in request.session:
@@ -777,3 +1564,23 @@ def add_mapping(request, process_id):
         "process": process,
         "operators": operators,
     })
+
+# Deactivation of operator-process mapping 
+def deactivate_mapping(request, operator_process_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    mapping = get_object_or_404(OperatorProcess, pk=operator_process_id)
+    mapping.is_active = False
+    mapping.save(update_fields=["is_active"])
+
+    return redirect("client:operator_process_list", process_id = mapping.process_id)
+
+# Activation of operator-process mapping 
+def activate_mapping(request, operator_process_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    mapping = get_object_or_404(OperatorProcess, pk=operator_process_id)
+    mapping.is_active = True
+    mapping.save(update_fields=["is_active"])
+
+    return redirect("client:operator_process_list", process_id = mapping.process_id)

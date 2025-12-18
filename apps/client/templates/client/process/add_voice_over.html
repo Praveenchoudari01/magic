@@ -1,0 +1,109 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <h3 class="fw-bold">Add Voice Over</h3>
+
+  <h6 class="text-secondary">
+    Step Content ID:
+    <strong>{{ detail.step_content_detail_id }}</strong>
+  </h6>
+
+  <hr>
+
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <!-- IMPORTANT: enable file upload -->
+  <form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Language Dropdown -->
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Language</label>
+      <select name="language_id" class="form-select" required>
+        <option value="">Select Language</option>
+        <option value="EN">English</option>
+        <option value="TEL">Telugu</option>
+        <option value="HIN">Hindi</option>
+        <option value="KAN">Kannada</option>
+        <option value="MAL">Malayalam</option>
+      </select>
+    </div>
+
+    <!-- Voice Over File Type -->
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Voice Over File Type</label>
+      <select name="file_type" class="form-select" required>
+        <option value="">Select File Type</option>
+        <option value=".mp3">MP3</option>
+        <option value=".wav">WAV</option>
+        <option value=".aac">AAC</option>
+        <option value=".m4a">M4A</option>
+      </select>
+    </div>
+
+    <!-- File Upload -->
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Upload Voice Over File</label>
+      <input
+        type="file"
+        name="upload_file"
+        class="form-control"
+        accept=".mp3,.wav,.aac,.m4a"
+        required
+      >
+      <small class="text-muted">
+        Allowed formats: MP3, WAV, AAC, M4A
+      </small>
+    </div>
+
+    <!-- Buttons -->
+    <div class="d-flex gap-2 mt-4">
+      <button
+        type="submit"
+        class="btn text-white px-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+        Upload
+      </button>
+
+      <a href="#"
+         class="btn btn-secondary">
+        Cancel
+      </a>
+    </div>
+
+  </form>
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const fileInput = document.querySelector('input[name="upload_file"]');
+  const fileTypeSelect = document.querySelector('select[name="file_type"]');
+
+  fileInput.addEventListener("change", function () {
+    if (!fileTypeSelect.value) {
+      alert("Please select file type before uploading.");
+      fileInput.value = "";
+      return;
+    }
+
+    const ext = fileInput.value.split(".").pop().toLowerCase();
+    if (ext !== fileTypeSelect.value) {
+      alert(
+        ```File extension does not match selected file type (" +
+        fileTypeSelect.value.toUpperCase() + ${ext}
+        ")```
+      );
+      fileInput.value = "";
+    }
+  });
+
+});
+</script>
+
+{% endblock %}

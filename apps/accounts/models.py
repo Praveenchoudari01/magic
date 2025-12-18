@@ -2,6 +2,9 @@ from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 import secrets
+import uuid
+from django.db import transaction
+from django.db.models import Max
 
 # Create your models here.
 class Type(models.Model):
@@ -16,7 +19,8 @@ class Type(models.Model):
         return self.type_name
 
 class User(models.Model):
-    user_id = models.AutoField(primary_key=True)
+    id = models.PositiveBigIntegerField(unique=True, null=True,  editable=False,)
+    user_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
 
     name = models.CharField(max_length=100)
     email = models.CharField(max_length=100, unique=True)
@@ -26,6 +30,7 @@ class User(models.Model):
     # Foreign Keys (string references to avoid circular import)
     type_id = models.ForeignKey("accounts.Type", on_delete=models.CASCADE)
     department = models.ForeignKey("client.Department", on_delete=models.CASCADE)
+    operator_id = models.CharField(max_length=50,unique=True,null=True)
     client = models.ForeignKey("product_owner.Client", on_delete=models.CASCADE)
 
     is_department_head = models.BooleanField(default=False)
@@ -56,11 +61,22 @@ class User(models.Model):
 
     class Meta:
         db_table = "user"
+        ordering = ["id"]
 
     def __str__(self):
         return self.name
 
     def save(self, *args, **kwargs):
+        if self.id is None:
+            with transaction.atomic():
+                last_id = (
+                    User.objects
+                    .select_for_update()
+                    .aggregate(Max("id"))["id__max"]
+                    or 0
+                )
+                self.id = last_id + 1
+
         if self.password and not self.password.startswith("pbkdf2_sha256$"):
             self.password = make_password(self.password)
         super().save(*args, **kwargs)
@@ -113,6 +129,9 @@ class PasswordReset(models.Model):
     def mark_used(self):
         self.used = True
         self.save()
+
+    class Meta:
+        db_table = 'password_reset'
 
     def __str__(self):
         return f"PasswordReset(user={self.user.email}, token={self.token}, used={self.used})"

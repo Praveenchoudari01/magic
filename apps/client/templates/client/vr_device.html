@@ -61,15 +61,15 @@
           </td>
           <td>
             <div class="action-column d-flex align-items-center justify-content-start gap-2">
-              <a href="#" class="text-primary" title="Edit Device">
+              <a href="{% url 'client:vr_device_update' device.device_id %}" class="text-primary" title="Edit Device">
                 <i class="bi bi-pencil-fill fs-6"></i>
               </a>
               {% if device.is_active %}
-                <a href="#" class="text-success" title="Deactivate Device">
+                <a href="{% url 'client:vr_device_deactivate' device.device_id %}" class="text-success" title="Deactivate Device">
                   <i class="bi bi-toggle-on fs-5"></i>
                 </a>
               {% else %}
-                <a href="#" class="text-danger" title="Activate Device">
+                <a href="{% url 'client:vr_device_activate' device.device_id %}" class="text-danger" title="Activate Device">
                   <i class="bi bi-toggle-off fs-5"></i>
                 </a>
               {% endif %}
@@ -79,6 +79,12 @@
         {% empty %}
         <tr>
           <td colspan="7" class="text-center py-3">No VR devices registered yet</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
         </tr>
         {% endfor %}
       </tbody>

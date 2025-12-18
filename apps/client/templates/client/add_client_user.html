@@ -33,7 +33,12 @@
                         <label class="form-label">Mobile <span class="text-danger">*</span></label>
                         <input type="text" name="mobile" class="form-control" placeholder="Enter mobile"  maxlength="10" minlength="10" oninput="this.value = this.value.replace(/[^0-9]/g,'');" required>
                     </div>
-
+                    
+                    <!-- Mobile -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label">Operator ID <span class="text-danger">*</span></label>
+                        <input type="text" name="operatorid" class="form-control" placeholder="Enter Operator Id"  maxlength="10" minlength="5" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '');" required>
+                    </div>
                     <!-- Department -->
                     <div class="col-12 col-md-6 col-lg-4">
                         <label class="form-label">Department <span class="text-danger">*</span></label>

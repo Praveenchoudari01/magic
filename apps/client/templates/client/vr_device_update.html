@@ -1,0 +1,96 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+<div class="container mt-5">
+
+    <!-- Page Title -->
+    <h2 class="fw-bold mb-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+        Update VR Device
+    </h2>
+
+    <div class="card shadow-sm p-4">
+        <form method="post" class="row g-4">
+            {% csrf_token %}
+
+            <!-- Device Name -->
+            <div class="col-md-4 form-floating-bottom">
+                <input type="text" name="device_name" class="form-control" id="device_name" value="{{ device.device_name }}" required>
+                <label for="device_name">Device Name *</label>
+            </div>
+
+            <!-- Unique Code -->
+            <div class="col-md-4 form-floating-bottom">
+                <input type="text" name="unique_code" class="form-control" id="unique_code" value="{{ device.unique_id }}" readonly>
+                <label for="unique_code">Unique Code</label>
+            </div>
+
+            <!-- Device Model -->
+            <div class="col-md-4 form-floating-bottom">
+                <input type="text" name="device_model" class="form-control" id="device_model" value="{{ device.device_model }}">
+                <label for="device_model">Device Model</label>
+            </div>
+
+            <!-- Device Make -->
+            <div class="col-md-4 form-floating-bottom">
+                <input type="text" name="device_make" class="form-control" id="device_make" value="{{ device.device_make }}">
+                <label for="device_make">Device Make</label>
+            </div>
+
+            <!-- Buttons -->
+            <div class="col-12 mt-4 d-flex gap-3">
+                
+                <button type="submit" 
+                        class="btn text-white px-4"
+                        style="background: linear-gradient(90deg, #e91e63, #3f51b5); border:none;">
+                    Update Device
+                </button>
+
+                <a href="{% url 'client:vr_device_list_view' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- Custom CSS -->
+<style>
+.form-floating-bottom {
+    position: relative;
+}
+
+.form-floating-bottom input {
+    border: none;
+    border-bottom: 2px solid #ced4da;
+    border-radius: 0;
+    padding: 0.75rem 0.5rem 0.25rem 0.5rem;
+    width: 100%;
+    background: transparent;
+    transition: border-color 0.3s;
+}
+
+.form-floating-bottom input:focus {
+    outline: none;
+    border-bottom-color: #3f51b5;
+}
+
+.form-floating-bottom label {
+    position: absolute;
+    left: 0.5rem;
+    top: 0.75rem;
+    color: #6c757d;
+    font-size: 1rem;
+    pointer-events: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.form-floating-bottom input:focus + label,
+.form-floating-bottom input:not(:placeholder-shown) + label {
+    top: -0.5rem;
+    font-size: 0.8rem;
+    color: #3f51b5;
+}
+</style>
+
+{% endblock %}

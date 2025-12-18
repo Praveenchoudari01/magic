@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect,  get_object_or_404
 from apps.accounts.models import User
-from apps.product_owner.models import Client
+from apps.product_owner.models import Client, ClientConfig
 from django.contrib import messages
 from PIL import Image
 from django.core.mail import EmailMultiAlternatives
@@ -23,13 +23,21 @@ def dashboard_home(request):
 
 
     # client admins (type_id = 2)
-    client_admin_count = User.objects.filter(type_id=2, is_active=True).count()
+    client_admin_count = User.objects.filter(type_id=3, is_active=True).count()
 
 
     context = {
         "client_admin_count": client_admin_count,
     }
     return render(request, "product_owner/home.html", context)
+
+def dashboard_profile(request):
+    """Profile page"""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return redirect('accounts:login')
+    
+    return render(request, "product_owner/profile.html")
 
 def implementer_view(request):
     """Implementer page"""
@@ -48,7 +56,7 @@ def dashboard_client(request):
 
     # Allow only Product Owners to view client list
     if role == "product owner":
-        clients = Client.objects.filter(created_by_id=user_id)
+        clients = (Client.objects.filter(created_by_id=user_id).select_related('subscription').order_by('id'))
     else:
         clients = Client.objects.none()  # No access for other users
 
@@ -197,3 +205,92 @@ def add_client(request):
 
     return render(request, "product_owner/add_client.html")
 
+# Edit existing client
+def edit_client(request, client_id):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return redirect("accounts:login")
+    
+    client = get_object_or_404(Client, client_id=client_id)
+    if request.method == "POST":
+        client.spoc_name = request.POST.get('spoc_name')
+        client.spoc_email = request.POST.get('spoc_email')
+        client.spoc_mobile = request.POST.get('spoc_mobile')
+        client.client_logo = request.POST.get('client_logo')
+        client.client_address = request.POST.get('client_address')
+
+        user_id = request.session.get('user_id')
+        updated_by = User.objects.get(user_id=user_id) if user_id else None
+        client.updated_by = updated_by
+        client.save()
+
+        messages.success(request, f"Client '{client.client_name}' updated successfully!")
+        return redirect('productowner:dashboard_client')
+
+    return render(request, 'product_owner/edit_client.html', {'client': client})
+
+def activate_client(request, client_id):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return redirect("accounts:login")
+    
+    client = get_object_or_404(Client, client_id=client_id)
+    client.is_active = True
+    client.updated_by_id = request.session.get('user_id')
+    client.save()
+    messages.success(request, f"Client '{client.client_name}' activated successfully!")
+    return redirect('productowner:dashboard_client')
+
+
+def deactivate_client(request, client_id):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return redirect("accounts:login")
+    
+    client = get_object_or_404(Client, client_id=client_id)
+    client.is_active = False
+    client.updated_by_id = request.session.get('user_id')
+    client.save()
+    messages.success(request, f"Client '{client.client_name}' deactivated successfully!")
+    return redirect('productowner:dashboard_client')
+
+
+def manage_client_subscription(request, client_id):
+    user_id = request.session.get("user_id")
+    role = request.session.get("role_name")
+
+    if not user_id:
+        return redirect('login')
+
+    if role != "product owner":
+        return redirect('dashboard_home')
+
+    # ✅ DO NOT filter by created_by here
+    client = get_object_or_404(Client, client_id=client_id)
+
+    subscription, created = ClientConfig.objects.get_or_create(
+        client=client,
+        defaults={
+            'created_by_id': user_id,
+            'status': 'ACTIVE'
+        }
+    )
+
+    if request.method == "POST":
+        subscription.no_of_devices = request.POST.get("no_of_devices", 0)
+        subscription.no_of_processes = request.POST.get("no_of_processes", 0)
+        subscription.no_of_operators = request.POST.get("no_of_operators", 0)
+        subscription.status = request.POST.get("status")
+        subscription.updated_by_id = user_id
+        subscription.save()
+
+        return redirect("productowner:dashboard_client")
+
+    return render(
+        request,
+        "product_owner/client_subscription.html",
+        {
+            "client": client,
+            "subscription": subscription,
+        }
+    )

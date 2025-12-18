@@ -9,29 +9,16 @@ app = FastAPI()
 
 app.add_middleware(HeaderAuthMiddleware)
 
-# GLOBAL_DEVICE_SECRET = "MY_STATIC_SECRET_2025"
-
-# def verify_signature(client_id, device_id, incoming_signature):
-#     message = f"{client_id}{device_id}"
-#     server_signature = hmac.new(
-#         GLOBAL_DEVICE_SECRET.encode(),
-#         message.encode(),
-#         hashlib.sha256
-#     ).hexdigest()
-
-#     return hmac.compare_digest(server_signature, incoming_signature)
-
 # Get Operators 
 @app.get("/operators")
 def get_operators(
-    client_id: int = Header(..., alias="client-id"),
-    device_id: int = Header(..., alias="device-id"),
-    # signature: str = Header(..., alias="signature")
+    api_key: str = Header(..., alias="api-key"),
 ):
-    # 1. Validate HMAC signature
-    # if not verify_signature(client_id, device_id, signature):
-    #     raise HTTPException(status_code=401, detail="Unauthorized")
+    client_id_str, device_id_str = api_key.split(":", 1)
+    client_id = client_id_str
+    device_id = device_id_str
 
+    print("clinet id from the get operators is ", client_id)
     try:
         db = get_connection()
         cursor = db.cursor()
@@ -39,11 +26,13 @@ def get_operators(
         query = """
             SELECT 
                 user_id,
+                operator_id,
                 name,
                 email,
                 mobile
             FROM user
-            WHERE client_id = %s AND type_id_id = 4
+            WHERE client_id = %s AND type_id_id = 4 AND is_active = 1
+            ORDER BY id
         """
 
         cursor.execute(query, (client_id,))
@@ -57,6 +46,7 @@ def get_operators(
                 SELECT process_id 
                 FROM oprator_process
                 WHERE operator_id = %s
+                ORDER BY id
             """
             cursor.execute(process_query, (operator_id))
             processes = cursor.fetchall()
@@ -68,7 +58,8 @@ def get_operators(
                     "process_id" : process["process_id"]
                 })
             operators.append({
-                "operator_id": r["user_id"],
+                "operator_id": r["operator_id"],
+                "user_id" : r["user_id"],
                 "clien_id": client_id,
                 "opertor_name": r["name"],
                 "operator_email": r["email"],
@@ -83,17 +74,13 @@ def get_operators(
 
 @app.get("/processes")
 def get_processes(
-    client_id: int = Header(..., alias="client-id"),
-    device_id: int = Header(..., alias="device-id"),
-    # signature: str = Header(..., alias="signature")
+    api_key: str = Header(..., alias="api-key"),
 ):
-    # if not verify_signature(client_id, device_id, signature):
-    #     raise HTTPException(status_code=401, detail="Unauthorized")
-    
-    try:
-        # print("Received client_id:", client_id)
-        # print("Received device_id:", device_id)
+    client_id_str, device_id_str = api_key.split(":", 1)
+    client_id = client_id_str
+    device_id = device_id_str
 
+    try:
         db = get_connection()
         cursor = db.cursor()
 
@@ -125,6 +112,7 @@ def get_processes(
             for step in steps_rows:
                 
                 step_id = step['step_id']
+                print("step id is ",step_id)
 
                 step_content_query = """
                     SELECT step_content_id, name, content_type
@@ -139,6 +127,7 @@ def get_processes(
                 for step_content in step_conent_rows:
                     
                     step_content_id = step_content["step_content_id"]
+                    print("step content_id is ",step_content_id)
 
                     step_content_details_query = """ 
                         SELECT step_content_detail_id, content_language_id, file_url, duration_or_no_pages
@@ -153,6 +142,7 @@ def get_processes(
                     for content_details in step_content_details_rows:
 
                         step_content_detail_id = content_details['step_content_detail_id']
+                        print("step_content_detail_id is ", step_content_detail_id)
 
                         voice_over_query = """ 
                             SELECT step_content_voice_over_id, voice_over_file_type, language_id, language, file_url
@@ -238,13 +228,12 @@ def get_processes(
 @app.post('/operator-stats')
 async def receive_session_data(
     request: Request,
-    client_id: str = Header(...),
-    device_id: str = Header(...),
-    # signature: str = Header(..., alias="signature")
+    api_key: str = Header(..., alias="api-key"),
 ):
-    # if not verify_signature(client_id, device_id, signature):
-    #     raise HTTPException(status_code=401, detail="Unauthorized")
-    
+    client_id_str, device_id_str = api_key.split(":", 1)
+    client_id = client_id_str
+    device_id = device_id_str
+
     try:
         # Read JSON body
         payload = await request.json()
@@ -254,7 +243,13 @@ async def receive_session_data(
         conn = get_connection()
         cursor = conn.cursor()
 
+        # 🔹 Collect stored data for response
+        stored_data = []
+
         for session in operator_session_list:
+
+            # 🔹 Collect step_session_id from API payload
+            step_session_ids = []
 
             # ---------------------------------------
             # 1️⃣ Insert into operator_sessions table
@@ -277,7 +272,7 @@ async def receive_session_data(
                 session["status"]
             ))
 
-            operator_session_db_id = cursor.lastrowid   # auto ID
+            operator_session_db_id = cursor.lastrowid
 
             # ---------------------------------------
             # 2️⃣ Insert session steps
@@ -286,7 +281,7 @@ async def receive_session_data(
 
                 insert_session_step = """
                     INSERT INTO session_steps
-                    (step_session_id, session_id, step_sr_no, started_at, 
+                    (session_step_id, session_id, step_sr_no, started_at, 
                     ended_at, time_spent_sec, content_used, client_id, step_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
@@ -298,12 +293,13 @@ async def receive_session_data(
                     step["started_at"],
                     step["ended_at"],
                     step["time_spent_sec"],
-                    str(step["content_used"]),  # True/False → "True"/"False"
+                    str(step["content_used"]),
                     session["client_id"],
                     step["step_id"]
                 ))
 
-                step_session_db_id = cursor.lastrowid
+                # 🔹 STORE step_session_id FROM API PAYLOAD
+                step_session_ids.append(step["step_session_id"])
 
                 # ---------------------------------------
                 # 3️⃣ Insert step content usage
@@ -324,10 +320,18 @@ async def receive_session_data(
                         content["closed_at"],
                         content["duration"],
                         session["client_id"],
-                        step_session_db_id,
+                        step["step_session_id"],  # payload value
                         content["step_content_id"],
                         content["content_language_id"]
                     ))
+
+            # 🔹 Store session-level response data
+            stored_data.append({
+                "session_id": session["session_id"],
+                "process_id": session["process_id"],
+                "operator_id": session["operator_id"],
+                "client_id": session["client_id"],
+            })
 
         conn.commit()
         cursor.close()
@@ -335,7 +339,8 @@ async def receive_session_data(
 
         return {
             "status": "success",
-            "message": "Session data stored in DB"
+            "message": "Session data stored in DB",
+            "data": stored_data
         }
 
     except Exception as e:

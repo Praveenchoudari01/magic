@@ -49,13 +49,15 @@
         <tr>
           <td>{{ forloop.counter }}</td>
           <td>
-            <a href="{% url 'client:step_list' process.process_id %}" class="text-decoration-none fw-semibold">
-                {{ process.process_name }}
-            </a>
+            {{ process.process_name }}
           </td>
           <td>{{ process.process_desc }}</td>
-          <td>{{ process.no_of_steps }}</td>
-          <td>{{ process.est_process_time }} sec</td>
+          <td>
+            <a href="{% url 'client:step_list' process.process_id %}" class="text-decoration-none fw-semibold">
+                {{ process.no_of_steps }}
+            </a>
+          </td>
+          <td>{{ process.est_process_time }} <small>sec</small> </td>
           <td>
               <a href="{% url 'client:operator_process_list' process.process_id %}"
                 class="text-decoration-none fw-semibold"
@@ -72,15 +74,15 @@
           </td>
 
           <td>
-            <a href="#" class="text-primary me-2" title="Edit">
+            <a href="{% url 'client:update_process' process.process_id %}" class="text-primary me-2" title="Edit">
               <i class="bi bi-pencil-fill fs-6"></i></a>
 
             {% if process.is_active %}
-              <a href="#" class="text-success me-2" title="Deactivate">
+              <a href="{% url 'client:deactivate_process' process.process_id %}" class="text-success me-2" title="Deactivate">
                 <i class="bi bi-toggle-on fs-5"></i>
               </a>
             {% else %}
-              <a href="#" class="text-danger me-2" title="Activate">
+              <a href="{% url 'client:activate_process' process.process_id %}" class="text-danger me-2" title="Activate">
                 <i class="bi bi-toggle-off fs-5"></i>
               </a>
             {% endif %}
@@ -89,7 +91,14 @@
 
         {% empty %}
         <tr>
-          <td colspan="7" class="text-center py-3">No Processes Added</td>
+          <td colspan="8" class="text-center py-3">No Processes Added</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -154,7 +163,7 @@ $(document).ready(function() {
     info: true,
     autoWidth: false,
     language: { search: "_INPUT_", searchPlaceholder: "Search processes..." },
-    columnDefs: [{ orderable: false, targets: [0, 6] }],
+    columnDefs: [{ orderable: false, targets: [0, 7] }],
     dom: '<"top d-flex justify-content-end align-items-center mb-2"f>rt<"bottom d-flex justify-content-end align-items-center mt-2"ip>',
     buttons: [
       { extend: 'csv', className: 'd-none', exportOptions: { columns: [0,1,2,3,4,5] } },

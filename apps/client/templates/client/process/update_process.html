@@ -1,0 +1,94 @@
+{% extends "client/client_dashboard.html" %}
+{% block content %}
+
+<div class="container">
+
+    <h2 class="fw-bold mb-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+        Update Process
+    </h2>
+
+    <div class="card border-1 rounded-3 shadow-sm" style="background-color: #ffffff00;">
+        <div class="card-body p-4">
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="row g-3">
+
+                    <!-- Process Name -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">
+                            Process Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text"
+                               name="process_name"
+                               class="form-control"
+                               value="{{ process.process_name }}"
+                               placeholder="Enter process name"
+                               required>
+                    </div>
+
+                    <!-- Process Description -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">
+                            Process Description <span class="text-danger">*</span>
+                        </label>
+                        <input type="text"
+                               name="process_desc"
+                               class="form-control"
+                               value="{{ process.process_desc }}"
+                               placeholder="Enter process description"
+                               required>
+                    </div>
+
+                    <!-- Estimated Process Time -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">
+                            Estimated Time (in minutes) <span class="text-danger">*</span>
+                        </label>
+                        <input type="number"
+                               name="est_process_time"
+                               class="form-control"
+                               value="{{ process.est_process_time }}"
+                               min="1"
+                               required>
+                    </div>
+
+                    <!-- No. of Steps -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">
+                            No. of Steps <span class="text-danger">*</span>
+                        </label>
+                        <input type="number"
+                               name="no_of_steps"
+                               class="form-control"
+                               value="{{ process.no_of_steps }}"
+                               min="1"
+                               required>
+                    </div>
+
+                </div>
+
+                <!-- Buttons -->
+                <div class="mt-4 d-flex gap-3">
+                    <button type="submit"
+                            class="btn text-white px-4"
+                            style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+                        Update Process
+                    </button>
+
+                    <a href="{% url 'client:processes' %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'product_owner/base_template.html' %}
+
+{% block title %}Edit Client{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+    <h2 class="fw-bold mb-4"
+        style="background: linear-gradient(90deg, #e91e63, #3f51b5);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;">
+        Edit Client - {{ client.client_name }}
+    </h2>
+
+    <form method="POST" class="p-4 border rounded-3 shadow-sm bg-white">
+        {% csrf_token %}
+        <div class="row g-3">
+
+            <!-- SPOC Name -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">SPOC Name</label>
+                <input type="text" name="spoc_name" class="form-control border-bottom" value="{{ client.spoc_name }}" required>
+            </div>
+
+            <!-- SPOC Email -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">SPOC Email</label>
+                <input type="email" name="spoc_email" class="form-control border-bottom" value="{{ client.spoc_email }}">
+            </div>
+
+            <!-- SPOC Mobile -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">SPOC Mobile</label>
+                <input type="text" name="spoc_mobile" class="form-control border-bottom" value="{{ client.spoc_mobile }}">
+            </div>
+
+            <!-- Client Logo URL -->
+            <!-- <div class="col-12 col-md-4">
+                <label class="form-label">Client Logo URL</label>
+                <input type="text" name="client_logo" class="form-control border-bottom" value="{{ client.client_logo }}">
+            </div> -->
+
+            <!-- Client Address -->
+            <div class="col-12 col-md-4">
+                <label class="form-label">Client Address</label>
+                <textarea name="client_address" class="form-control border-bottom" rows="1">{{ client.client_address }}</textarea>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="mt-4 d-flex gap-3">
+            <button type="submit" 
+                    class="btn text-white px-4"
+                    style="background: linear-gradient(90deg, #e91e63, #3f51b5); border: none;">
+                Update Client
+            </button>
+            <a href="{% url 'product_owner:dashboard_client' %}" class="btn btn-secondary px-4">Cancel</a>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

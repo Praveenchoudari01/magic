@@ -34,6 +34,12 @@
                         <input type="text" name="mobile" id="mobile" value="{{ user.mobile }}" maxlength="10" minlength="10" oninput="this.value = this.value.replace(/[^0-9]/g,'');"class="form-control">
                     </div>
 
+                    <!-- operator_id -->
+                    <div class="col-md-4">
+                        <label for="operatorid" class="form-label">Operator ID</label>
+                        <input type="text" name="operatorid" id="operatorid" value="{{ user.operator_id }}"  maxlength="10" minlength="5" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '');" class="form-control">
+                    </div>
+
                     <!-- Address -->
                     <div class="col-md-4">
                         <label for="address" class="form-label">Address</label>

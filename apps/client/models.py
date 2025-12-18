@@ -3,10 +3,31 @@ from django.contrib.auth.hashers import make_password, check_password
 from apps.accounts.models import User
 from apps.product_owner.models import Client
 from django.utils import timezone
+import uuid
+from django.db import transaction
+from django.db.models import Max
+
+class ManualAutoIncrementMixin(models.Model):
+    id = models.PositiveBigIntegerField(unique=True, null=True, editable=False)
+
+    class Meta:
+        abstract = True
+
+    def assign_auto_id(self):
+        if self.id is None:
+            from django.db import transaction
+            from django.db.models import Max
+            with transaction.atomic():
+                last_id = self.__class__.objects.select_for_update().aggregate(Max("id"))["id__max"] or 0
+                self.id = last_id + 1
+
+    def save(self, *args, **kwargs):
+        self.assign_auto_id()
+        super().save(*args, **kwargs)
 
 # Create your models here.
 class Department(models.Model):
-    department_name = models.CharField(max_length=100)
+    department_name = models.CharField(max_length=100, null=True, unique=True)
     department_description = models.CharField(max_length=255, null=True, blank=True)
 
     client = models.ForeignKey("product_owner.Client", on_delete=models.CASCADE)
@@ -25,8 +46,8 @@ class Department(models.Model):
     def __str__(self):
         return self.department_name
 
-class VRDevice(models.Model):
-    device_id = models.AutoField(primary_key=True)
+class VRDevice(ManualAutoIncrementMixin, models.Model):
+    device_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
     unique_id = models.CharField(max_length=255, unique=True)
     device_name = models.CharField(max_length=255)
     device_make = models.CharField(max_length=255, blank=True, null=True)
@@ -47,12 +68,16 @@ class VRDevice(models.Model):
     class Meta:
         db_table = 'vr_device'
         unique_together = ('device_name', 'client')  # device_name unique per client
+        ordering = ["id"]
 
     def __str__(self):
         return self.device_name
     
-class Process(models.Model):
-    process_id = models.AutoField(primary_key=True)
+def generate_uuid():
+    return str(uuid.uuid4())
+    
+class Process(ManualAutoIncrementMixin, models.Model):
+    process_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
     process_name = models.CharField(max_length=255)
     process_desc = models.CharField(max_length=255)
     est_process_time = models.IntegerField()
@@ -70,13 +95,15 @@ class Process(models.Model):
 
     class Meta:
         db_table = 'processes'
+        ordering = ["id"]
 
     def __str__(self):
         return self.process_name
     
 
-class Step(models.Model):
-    step_id = models.AutoField(primary_key=True)
+class Step(ManualAutoIncrementMixin, models.Model):
+    step_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
+
     
     # Foreign Key to Process table
     process = models.ForeignKey(
@@ -95,11 +122,12 @@ class Step(models.Model):
 
     class Meta:
         db_table = 'steps'
+        ordering = ["id"]
 
     def __str__(self):
         return self.step_name
     
-class StepContent(models.Model):
+class StepContent(ManualAutoIncrementMixin, models.Model):
     CONTENT_TYPES = [
         ('image', 'Image'),
         ('video', 'Video'),
@@ -108,7 +136,7 @@ class StepContent(models.Model):
         ('text', 'Text'),
     ]
 
-    step_content_id = models.AutoField(primary_key=True)
+    step_content_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
 
     # Foreign Key to Step table
     step = models.ForeignKey(
@@ -133,8 +161,8 @@ class StepContent(models.Model):
     def __str__(self):
         return f"{self.name} ({self.content_type})"
 
-class StepContentDetail(models.Model):
-    step_content_detail_id = models.AutoField(primary_key=True)
+class StepContentDetail(ManualAutoIncrementMixin, models.Model):
+    step_content_detail_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
 
     # FK to StepContent table
     step_content = models.ForeignKey(
@@ -160,8 +188,8 @@ class StepContentDetail(models.Model):
     # def __str__(self):
     #     return f"{self.step_content} ({self.content_type})"
 
-class StepContentVoiceOver(models.Model):
-    step_content_voice_over_id = models.AutoField(primary_key=True)
+class StepContentVoiceOver(ManualAutoIncrementMixin, models.Model):
+    step_content_voice_over_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
 
     # FK to StepContentDetail
     step_content_detail = models.ForeignKey(
@@ -189,12 +217,13 @@ class StepContentVoiceOver(models.Model):
 
     class Meta:
         db_table = 'step_content_voice_over'
+        ordering = ["id"]
 
     def __str__(self):
         return f"VoiceOver {self.step_content_voice_over_id} ({self.voice_over_file_type})"
     
-class StepContentCaptions(models.Model):
-    caption_id = models.AutoField(primary_key=True)
+class StepContentCaptions(ManualAutoIncrementMixin, models.Model):
+    caption_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
 
     # FK to StepContentVoiceOver
     step_content_voice_over = models.ForeignKey(
@@ -221,12 +250,13 @@ class StepContentCaptions(models.Model):
 
     class Meta:
         db_table = 'step_content_captions'
+        ordering = ["id"]
 
     def __str__(self):
         return f"Caption {self.caption_id} ({self.caption_file_type})"
 
-class OperatorProcess(models.Model):
-    operator_process_id = models.AutoField(primary_key=True)
+class OperatorProcess(ManualAutoIncrementMixin, models.Model):
+    operator_process_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
 
     # FK → processes table
     process = models.ForeignKey(
@@ -250,17 +280,19 @@ class OperatorProcess(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
     class Meta:
         db_table = 'oprator_process'   # using your exact table name
+        ordering = ["id"]
 
     def __str__(self):
         return f"OperatorProcess {self.operator_process_id}"
     
-class OperatorSession(models.Model):
-    operator_session_id = models.AutoField(primary_key=True)
+class OperatorSession(ManualAutoIncrementMixin, models.Model):
+    operator_session_id = models.BigAutoField(primary_key=True)
 
     # session_id (unique integer)
-    session_id = models.IntegerField(unique=True)
+    session_id = models.CharField(max_length=36,unique=True,default=uuid.uuid4,editable=False)
 
     # FK → User
     operator = models.ForeignKey(
@@ -303,28 +335,31 @@ class OperatorSession(models.Model):
 
     class Meta:
         db_table = 'operator_sessions'
+        ordering = ["id"]
 
     def __str__(self):
         return f"Session {self.session_id} - {self.operator}"
     
-class SessionStep(models.Model):
-    session_step_id = models.AutoField(primary_key=True)
+class SessionStep(ManualAutoIncrementMixin, models.Model):
+    session_step_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
 
     # step_session_id (unique int, auto-increment in DB)
-    step_session_id = models.IntegerField(unique=True)
 
     # FK → operator_sessions
     session = models.ForeignKey(
         'client.OperatorSession',
+        to_field='session_id',          # 👈 IMPORTANT
         on_delete=models.CASCADE,
-        related_name='session_steps'
+        related_name='session_steps',
+        db_column='session_id',         # optional, but keeps column name clean
     )
 
     # FK → steps (step_id)
     step = models.ForeignKey(
         'client.Step',
         on_delete=models.CASCADE,
-        related_name='step_session_steps'
+        related_name='step_session_steps',
+        db_column='step_id',
     )
 
     # FK → steps (step_sr_no)
@@ -355,11 +390,12 @@ class SessionStep(models.Model):
 
     class Meta:
         db_table = 'session_steps'
+        ordering = ["id"]
 
     def __str__(self):
         return f"SessionStep {self.step_session_id} (Session {self.session.id})"
     
-class SessionStepContentUsage(models.Model):
+class SessionStepContentUsage(ManualAutoIncrementMixin, models.Model):
     CONTENT_TYPES = (
         ('image', 'Image'),
         ('video', 'Video'),
@@ -367,14 +403,15 @@ class SessionStepContentUsage(models.Model):
         ('pdf', 'PDF'),
         ('text', 'Text'),
     )
-
-    session_step_content_id = models.AutoField(primary_key=True)
-    usage_id = models.IntegerField(unique=True)
+    session_step_content_id = models.BigAutoField(primary_key=True)
+    usage_id = models.CharField(max_length=36,unique=True,default=uuid.uuid4,editable=False)
 
     step_session = models.ForeignKey(
         'client.SessionStep',
+        to_field = 'session_step_id',
         on_delete=models.CASCADE,
-        related_name='content_usages'
+        related_name='content_usages',
+        db_column='step_session_id',
     )
 
     step_content = models.ForeignKey(
@@ -393,12 +430,7 @@ class SessionStepContentUsage(models.Model):
 
     duration = models.IntegerField(null=True, blank=True)
 
-    language = models.ForeignKey(
-        'client.StepContentDetail',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
+    language = models.CharField(max_length=10,db_column='language_id',null=True,blank=True)
 
     client = models.ForeignKey(
         'product_owner.Client',
@@ -407,6 +439,7 @@ class SessionStepContentUsage(models.Model):
 
     class Meta:
         db_table = "session_step_content_usage"
+        ordering = ["id"]
 
     def __str__(self):
         return f"Usage {self.usage_id} for SessionStep {self.step_session_id}"

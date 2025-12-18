@@ -1,9 +1,29 @@
 from django.db import models
 import uuid
 from django.utils import timezone
+from django.db import transaction
+from django.db.models import Max
 
-class Client(models.Model):
-    client_id = models.AutoField(primary_key=True)
+class ManualAutoIncrementMixin(models.Model):
+    id = models.PositiveBigIntegerField(unique=True, null=True, editable=False)
+
+    class Meta:
+        abstract = True
+
+    def assign_auto_id(self):
+        if self.id is None:
+            from django.db import transaction
+            from django.db.models import Max
+            with transaction.atomic():
+                last_id = self.__class__.objects.select_for_update().aggregate(Max("id"))["id__max"] or 0
+                self.id = last_id + 1
+
+    def save(self, *args, **kwargs):
+        self.assign_auto_id()
+        super().save(*args, **kwargs)
+
+class Client(ManualAutoIncrementMixin, models.Model):
+    client_id = models.CharField(max_length=36,primary_key=True,default=uuid.uuid4,editable=False)
     client_name = models.CharField(max_length=100, unique=True)
     spoc_name = models.CharField(max_length=100, blank=True, null=True)
     spoc_email = models.CharField(max_length=100, blank=True, null=True)
@@ -24,6 +44,42 @@ class Client(models.Model):
 
     class Meta:
         db_table = 'client'
+        ordering = ["id"]
 
     def __str__(self):
         return self.client_name
+
+# subscriptions/models.py
+class ClientConfig(models.Model):
+    client = models.OneToOneField(
+        Client,
+        on_delete=models.CASCADE,
+        related_name='subscription'
+    )
+
+    no_of_devices = models.PositiveIntegerField(default=0)
+    no_of_processes = models.PositiveIntegerField(default=0)
+    no_of_operators = models.PositiveIntegerField(default=0)
+
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('ACTIVE', 'Active'),
+            ('INACTIVE', 'Inactive'),
+            ('SUSPENDED', 'Suspended'),
+        ],
+        default='ACTIVE'
+    )
+
+    created_by = models.ForeignKey("accounts.User", related_name="clients_subscription_created", on_delete=models.SET_NULL, null=True)
+    updated_by = models.ForeignKey("accounts.User", related_name="clients_subscription_updated", on_delete=models.SET_NULL, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'client_config'
+
+    def __str__(self):
+        return f"{self.client.name} Subscription"
