@@ -36,23 +36,17 @@ def login(request):
 
         try:
             user = User.objects.get(email=email, is_active=True)
-            # print(f"🔹 User found: {user.name} (ID: {user.user_id}) (MAIL: {user.email})")
 
             if user.check_password(password):
                 # Set session
-                print("user id is ", user.user_id)
                 request.session['user_id'] = str(user.user_id)
+                request.session["client_id"] = str(user.client.client_id)
                 request.session['user_name'] = user.name
                 request.session['department_head'] = int(user.is_department_head)
                 request.session['type_id'] = user.type_id.type_id
                 role_name = user.type_id.type_name.lower() if user.type_id else None
                 request.session['role_name'] = role_name
                 request.session['user_email'] = user.email
-
-                # Debug: print session info
-                # print("🔹 Session after login:")
-                # for key, value in request.session.items():
-                #     print(f"    {key}: {value}")
 
                 # Audit Trail (LOGIN)
                 login = AuditTrail.objects.create(
@@ -65,27 +59,10 @@ def login(request):
                     timestamp=timezone.now().astimezone()
                 )
                 login.save()
-                # print("🔹 Audit trail created for login")
 
                 if user.first_login:
                     return redirect('accounts:change_password')
                 
-                # 🔹 ADD JWT TOKEN CREATION HERE
-                # try:
-                #     payload = {
-                #         "user_id": str(user.user_id),
-                #         "email": user.email,
-                #         "role": role_name,
-                #         # "exp": datetime.utcnow() + timedelta(hours=settings.JWT_EXPIRATION_HOURS)
-                #     }
-                #     token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-                # except Exception as e:
-                #     # In case of JWT creation issue, continue normal login
-                #     # print(f"JWT generation failed: {e}")
-                #     token = None
-
-                # Redirect based on role
-                # print("role is", role_name)
                 if role_name == "product owner":
                     # Redirect to Product Owner dashboard
                     response = redirect(reverse("product_owner:dashboard_home"))
@@ -98,24 +75,12 @@ def login(request):
                 else:
                     pass
 
-                # 🔹 ADD JWT COOKIE TO RESPONSE
-                # if token:
-                #     response.set_cookie(
-                #         key="access_token",
-                #         value=token,
-                #         httponly=True,
-                #         secure=False,       # ✅ Change to True in production (HTTPS)
-                #         samesite="Lax"
-                #     )
-
                 return response
 
             else:
-                # print("❌ Invalid password")
                 error = "Invalid email or password."
 
         except User.DoesNotExist:
-            # print("❌ User does not exist or is inactive")
             error = "Invalid email or password."
 
     return render(request, "accounts/login.html", {"error": error, "success": success})
@@ -124,8 +89,7 @@ def logout_view(request):
     perform_logout(request)
     response = redirect(reverse("accounts:login"))
 
-    # 🔹 ADD JWT COOKIE DELETION
-    response.delete_cookie("access_token")
+    response.delete_cookie("sessionid")
 
     return response
 

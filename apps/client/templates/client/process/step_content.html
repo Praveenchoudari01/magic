@@ -2,7 +2,9 @@
 {% block content %}
 
 <div class="container">
-  <h2 class="fw-bold mb-0">Step : {{ step.step_name }}</h2>
+  <h2 class="fw-bold mb-0" style="background: linear-gradient(90deg, #e91e63, #3f51b5); 
+               -webkit-background-clip: text; 
+               -webkit-text-fill-color: transparent;">{{ step.step_name }}</h2>
   <!-- Page Header -->
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2 header-responsive">
 
@@ -54,15 +56,17 @@
         <tr>
           <td>{{ forloop.counter }}</td>
 
-          <td class="fw-bold text-primary">
-            <a href="{% url 'client:step_content_details' content.step_content_id %}">
-              {{ content.name }}
-            </a>
+          <td >
+            {{ content.name }}
           </td>
 
           <td>{{ content.desc }}</td>
 
-          <td>{{ content.get_content_type_display }}</td>
+          <td class="fw-bold text-primary">
+            <a href="{% url 'client:step_content_details' content.step_content_id %}" style="text-decoration: none;">
+              {{ content.get_content_type_display }}
+            </a>
+          </td>
 
           <td>
             {% if content.is_active %}

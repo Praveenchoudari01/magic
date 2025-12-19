@@ -4,6 +4,7 @@ from . import views
 app_name = "client"  # namespace
 
 urlpatterns = [
+    #Client pages
     path('dashboard/', views.client_home, name='client_home'),
     path('profile/', views.client_profile, name='client_profile'),
 
@@ -35,6 +36,7 @@ urlpatterns = [
     path("process/activate/<uuid:process_id>/", views.activate_process, name="activate_process"),
     path("process/<uuid:process_id>/update/",views.update_process,name="update_process"),
 
+    #Steps
     path('process/<uuid:process_id>/steps/', views.step_list, name='step_list'),
     path('process/<uuid:process_id>/steps/add/', views.add_step, name='add_step'),
     path("step/<uuid:step_id>/contents/", views.step_contents, name="step_contents"),
@@ -42,23 +44,27 @@ urlpatterns = [
     path('step/<uuid:step_id>/activate/', views.step_activation , name='step_activation'),
     path('step/<uuid:step_id>/update/', views.update_step, name='update_step'),
 
+    #Step Content
     path('step/<uuid:step_id>/content/add/', views.add_step_content, name='add_step_content'),
     path('step-content/<uuid:content_id>/details/',views.step_content_details,name='step_content_details'),
     path('step-content/<uuid:content_id>/deactivate/', views.deactivate_step_content, name='deactivate_step_content'),
     path('step-content/<uuid:content_id>/activate/', views.activate_step_content, name='activate_step_content'),
     path('step-content/<uuid:content_id>/update/', views.update_step_content, name='update_step_content'),
 
+    #Step Content_details
     path("step-content/<uuid:content_id>/details/add/",views.add_step_content_detail,name="add_step_content_detail"),
     path('step-content-detail/<uuid:detail_id>/deactivate/',views.deactivate_step_content_detail, name='deactivate_step_content_detail'),
     path('step-content-detail/<uuid:detail_id>/activate/',views.activate_step_content_detail, name='activate_step_content_detail'),
     path("step-content-detail/<uuid:detail_id>/update/",views.update_step_content_detail,name="update_step_content_detail"),
 
+    #Voice_overs
     path("step-content-detail/<uuid:detail_id>/voice-overs/",views.voice_over_list,name="voice_over_list"),
     path("step-content-detail/<uuid:detail_id>/voice-overs/add/", views.add_voice_over, name="add_voice_over"),
     path("step-content-detail/voice-over/<uuid:voice_over_id>/deactivate/",views.deactivate_voice_over,name="deactivate_voice_over"),
     path("step-content-detail/voice-over/<uuid:voice_over_id>/activate/",views.activate_voice_over,name="activate_voice_over"),
     path("step-content-detail/voice-over/<uuid:voice_over_id>/update/",views.update_voice_over,name="update_voice_over"),
 
+    #Captions
     path("step-content-detail/<uuid:detail_id>/captions/",views.caption_list,name="caption_list"), 
     path("step-content-detail/<uuid:detail_id>/captions/add/",views.add_captions,name="add_captions"),
     path("step-content-detail/caption/<uuid:caption_id>/deactivate/",views.deactivate_caption,name="deactivate_caption"),
@@ -67,8 +73,9 @@ urlpatterns = [
 
     #operator-process
     path('operator-process/<uuid:process_id>/', views.operator_process_list, name='operator_process_list'),
-    path("process/<uuid:process_id>/add-mapping/",views.add_mapping,name="add_mapping"),
+    path("properator-process/<uuid:process_id>/add-mapping/",views.add_mapping,name="add_mapping"),
     path('operator-process/<uuid:operator_process_id>/deactivate/', views.deactivate_mapping, name='deactivate_mapping'),
     path('operator-process/<uuid:operator_process_id>/activate/', views.activate_mapping, name='activate_mapping'),
+    path("operator-process/<uuid:mapping_id>/update-mapping/",views.update_mapping,name="update_mapping"),
 
 ]

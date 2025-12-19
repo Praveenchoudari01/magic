@@ -1,20 +1,16 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
-from jose import jwt
-from datetime import datetime, timedelta
 from django.conf import settings
 from apps.accounts.utils import perform_logout
 from apps.product_owner.models import Client
 from apps.accounts.models import User, Type
 from apps.client.models import Department, VRDevice, Process, Step, StepContent, StepContentDetail,StepContentCaptions,StepContentVoiceOver, OperatorProcess
 from django.contrib import messages
-import random
-import string
 from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from datetime import datetime
 import httpagentparser
 import paho.mqtt.client as mqtt
 import json
@@ -23,32 +19,9 @@ from django.db.models import Count
 import os
 from urllib.parse import urlparse
 import uuid
-import environ
 import boto3
 from django.conf import settings
 
-#AWS Importing
-env = environ.Env()
-AWS_BUCKET = env("AWS_BUCKET")
-AWS_REGION = env("AWS_REGION")
-AWS_ACCESS_KEY = env("AWS_ACCESS_KEY")
-AWS_SECRET_KEY = env("AWS_SECRET_KEY")
-
-print("bucket ", AWS_BUCKET)
-print("Region ",AWS_REGION)
-print("Access key", AWS_ACCESS_KEY)
-print("Secret key ", AWS_SECRET_KEY)
-
-aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-print("aws access key id is", aws_access_key_id)
-
-#S3 bucket to upload the files.
-s3 = boto3.client(
-    "s3",
-    region_name=AWS_REGION,
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY
-)
 
 # Create your views here.
 def client_home(request):
@@ -57,7 +30,25 @@ def client_home(request):
     if not user_id:
         return redirect("accounts:login")
     
-    return render(request, "client/client_home.html")
+    # Get client_id from logged-in user
+    user = User.objects.get(user_id=user_id)
+    client_id = user.client_id
+    
+    # Operator counts filtered by client
+    total_operators = User.objects.filter(client_id=client_id, type_id = 4, is_active = True).count()
+
+    # Process counts filtered by client
+    total_processes = Process.objects.filter(client_id=client_id, is_active = True).count()
+
+    # VR device counts filtered by client
+    total_devices = VRDevice.objects.filter(client_id=client_id, is_active = True).count()
+
+    context = {
+        "total_operators": total_operators,
+        "total_processes": total_processes,
+        "total_devices": total_devices,
+    }
+    return render(request, "client/client_home.html", context)
 
 def client_profile(request):
     """Profile page"""
@@ -69,21 +60,15 @@ def client_profile(request):
 
 # Creating the Operator and displaying the operators list on the table
 def client_user_list(request):
-    # check if client_admin is logged in
-    # print("user id is ", request.session["user_id"])
     if "user_id" not in request.session:
         return redirect("accounts:login")
     
     client_admin = User.objects.get(user_id=request.session["user_id"])
-    # print("client_admin is ", client_admin)
 
-    # fetch all users of the same client
     users = User.objects.filter(client=client_admin.client,  type_id=4).order_by("id")
-    # print("users ",users)
 
     # fetch departments for dropdown
     departments = Department.objects.filter(client=client_admin.client, is_active=True)
-    # print("departments ",departments)
 
     # render template
     return render(request, "client/users.html", {
@@ -105,7 +90,6 @@ def add_client_user(request):
 
     users = User.objects.filter(client=client_admin.client)
     # print("users from  add_client_user view ", users)
-
 
     user = User.objects.all()
 
@@ -187,7 +171,6 @@ def user_deactivate(request, pk):
     user.save(update_fields=['is_active'])
     return redirect("client:client_user_list")
 
-
 # Creating the department, update, activation and deactivation views to handle the department data
 #Department listing page
 def department_list(request):
@@ -217,7 +200,6 @@ def add_department(request):
         department_name = request.POST.get("department_name")
         department_description = request.POST.get("department_description")
 
-        # 🔥 Check if department already exists for this client
         if Department.objects.filter(
             client=client,
             department_name__iexact=department_name
@@ -279,7 +261,6 @@ def department_deactivate(request, dept_id):
     messages.success(request, f"Department '{department.department_name}' deactivated successfully!")
     return redirect("client:department_list")
 
-
 # Activate Department
 def department_activate(request, pk):
     user_id = request.session.get("user_id")
@@ -312,9 +293,7 @@ def publish_mqtt_message(topic, payload):
 
         # ---- Connect ----
         client.connect(broker, port, 60)
-
         client.loop_start()
-
         message = json.dumps(payload)
 
         # ---- Publish with guaranteed delivery ----
@@ -326,10 +305,6 @@ def publish_mqtt_message(topic, payload):
         )
 
         info.wait_for_publish()     # wait until broker ACKs the message
-
-        #print("Publish return code:", info.rc)
-        #print("Message published successfully to:", topic)
-
         time.sleep(1)  # allow loop to finish network operations
 
         client.loop_stop(force=False)
@@ -356,7 +331,6 @@ def vr_device_list_view(request):
 
     devices = VRDevice.objects.filter(client=client).order_by('-created_at')
     return render(request, 'client/vr_device.html', {'devices': devices})
-
 
 # VR Device Registration View
 def vr_device_register_view(request):
@@ -521,6 +495,7 @@ def add_process(request):
 
     return render(request, "client/process/process_add.html")
 
+#Updating the process details
 def update_process(request, process_id):
     # Ensure user logged in
     if "user_id" not in request.session:
@@ -801,7 +776,6 @@ def update_step_content(request, content_id):
         }
     )
 
-#Step content details
 def step_content_details(request, content_id):
     if "user_id" not in request.session:
         return redirect("accounts:login")
@@ -812,6 +786,17 @@ def step_content_details(request, content_id):
 
     # Get all detail rows for this StepContent
     details = StepContentDetail.objects.filter(step_content=content).order_by('-created_at')
+
+    # Annotate clean file name
+    for d in details:
+        filename = os.path.basename(urlparse(d.file_url).path)
+        # Remove UUID prefix (everything before first underscore)
+        if "_" in filename:
+            clean_name_with_ext = filename.split("_", 1)[1]  # e.g., TELUGU_Step 1.mp3
+        else:
+            clean_name_with_ext = filename
+        # Remove extension
+        d.clean_file_name = os.path.splitext(clean_name_with_ext)[0]
 
     context = {
         "content": content,
@@ -825,10 +810,18 @@ def step_content_details(request, content_id):
 def add_step_content_detail(request, content_id):
     if "user_id" not in request.session:
         return redirect("accounts:login")
-    
+
     content = get_object_or_404(StepContent, pk=content_id)
-    content_type = content.content_type  # VIDEO/AUDIO/PDF/IMAGE
+    content_type = content.content_type.lower()
     error = None
+
+    # INIT S3 CLIENT
+    s3 = boto3.client(
+        "s3",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY,
+        aws_secret_access_key=settings.AWS_SECRET_KEY
+    )
 
     if request.method == "POST":
         language_id = request.POST.get("language_id")
@@ -836,28 +829,26 @@ def add_step_content_detail(request, content_id):
         upload_file = request.FILES.get("upload_file")
         is_active = True if request.POST.get("is_active") == "on" else False
 
-        # Basic file validation
+        # VALIDATION
         if not upload_file:
             error = "Please upload a file."
 
-        else:
-            ext = os.path.splitext(upload_file.name)[1].lower()
+        valid_types = {
+            "video": [".mp4", ".mov", ".mkv"],
+            "audio": [".mp3", ".wav", ".aac", ".m4a"],
+            "pdf": [".pdf"],
+            "document": [".pdf", ".docx", ".txt"],
+            "image": [".jpg", ".jpeg", ".png"],
+        }
 
-            valid_types = {
-                "video": [".mp4", ".mov", ".mkv"],
-                "audio": [".mp3", ".wav", ".aac"],
-                "pdf":   [".pdf"],
-                "document": [".pdf", ".docx"],
-                "image": [".jpg", ".jpeg", ".png"],
-            }
+        ext = os.path.splitext(upload_file.name)[1].lower()
 
-            if ext not in valid_types.get(content_type, []):
-                allowed = ", ".join(valid_types.get(content_type, []))
-                error = f"Invalid file type. Allowed: {allowed}"
+        if ext not in valid_types.get(content_type, []):
+            allowed = ", ".join(valid_types.get(content_type, []))
+            error = f"Invalid file type. Allowed: {allowed}"
 
-        # Duration / Page Count validation
         if not duration_or_no_pages:
-            if content_type in ["VIDEO", "AUDIO"]:
+            if content_type in ["video", "audio"]:
                 error = "Duration required for audio/video"
             else:
                 error = "Page count required"
@@ -871,28 +862,39 @@ def add_step_content_detail(request, content_id):
                 "is_active": is_active,
             })
 
-        # ---------------------------
-        #  SAVE FILE TO LOCAL STORAGE
-        # ---------------------------
-        upload_folder = os.path.join(settings.MEDIA_ROOT, "step_content")
+        # DETERMINE S3 FOLDER
+        folder_map = {
+            "video": "videos",
+            "audio": "audios",
+            "pdf": "documents",
+            "document": "documents",
+            "image": "images",
+        }
 
-        os.makedirs(upload_folder, exist_ok=True)
+        folder_name = folder_map.get(content_type, "others")
 
-        # create unique filename
-        saved_filename = f"{content_id}_{upload_file.name}"
-        saved_path = os.path.join(upload_folder, saved_filename)
+        # CREATE UNIQUE FILE NAME
+        unique_filename = f"{uuid.uuid4()}_{upload_file.name}"
+        s3_key = f"{folder_name}/{unique_filename}"
 
-        # write file to media folder manually
-        with open(saved_path, "wb+") as destination:
-            for chunk in upload_file.chunks():
-                destination.write(chunk)
+        # UPLOAD TO S3
+        try:
+            s3.upload_fileobj(
+                upload_file,
+                settings.AWS_BUCKET,
+                s3_key,
+                ExtraArgs={"ContentType": upload_file.content_type}
+            )
+        except Exception as e:
+            return render(request, "client/process/add_step_content_detail.html", {
+                "content": content,
+                "error": f"S3 upload failed: {str(e)}"
+            })
 
-        # final URL stored in DB (MEDIA_URL + relative path)
-        file_url = f"{settings.MEDIA_URL}step_content/{saved_filename}"
+        # FINAL FILE URL
+        file_url = f"{settings.AWS_BASE_URL}{s3_key}"
 
-        # ---------------------------
-        #  SAVE DB RECORD
-        # ---------------------------
+        # SAVE DB RECORD
         StepContentDetail.objects.create(
             step_content=content,
             language_id=language_id,
@@ -901,6 +903,7 @@ def add_step_content_detail(request, content_id):
             is_active=is_active
         )
 
+        messages.success(request, "Content uploaded successfully!")
         return redirect("client:step_content_details", content_id=content_id)
 
     return render(request, "client/process/add_step_content_detail.html", {
@@ -927,6 +930,7 @@ def activate_step_content_detail(request, detail_id):
     detail.save()
     return redirect("client:step_content_details",content_id=detail.step_content_id)
 
+#Updating the existing uploaded file or content
 def update_step_content_detail(request, detail_id):
     if "user_id" not in request.session:
         return redirect("accounts:login")
@@ -936,20 +940,26 @@ def update_step_content_detail(request, detail_id):
     content_type = content.content_type.lower()
     error = None
 
+    # INIT S3 CLIENT
+    s3 = boto3.client(
+        "s3",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY,
+        aws_secret_access_key=settings.AWS_SECRET_KEY
+    )
+
     if request.method == "POST":
         language_id = request.POST.get("language_id")
         duration_or_no_pages = request.POST.get("duration_or_no_pages")
         upload_file = request.FILES.get("upload_file")
         is_active = True if request.POST.get("is_active") == "on" else False
 
-        # ---------------------------
-        # FILE VALIDATION (OPTIONAL)
-        # ---------------------------
+        # FILE VALIDATION
         valid_types = {
             "video": [".mp4", ".mov", ".mkv"],
-            "audio": [".mp3", ".wav", ".aac"],
-            "pdf":   [".pdf"],
-            "document": [".pdf", ".docx"],
+            "audio": [".mp3", ".wav", ".aac", ".m4a"],
+            "pdf": [".pdf"],
+            "document": [".pdf", ".docx", ".txt"],
             "image": [".jpg", ".jpeg", ".png"],
         }
 
@@ -959,7 +969,6 @@ def update_step_content_detail(request, detail_id):
                 allowed = ", ".join(valid_types.get(content_type, []))
                 error = f"Invalid file type. Allowed: {allowed}"
 
-        # Duration / page validation
         if not duration_or_no_pages:
             if content_type in ["video", "audio"]:
                 error = "Duration required for audio/video"
@@ -973,25 +982,53 @@ def update_step_content_detail(request, detail_id):
                 "error": error
             })
 
-        # ---------------------------
-        # FILE SAVE (ONLY IF NEW FILE)
-        # ---------------------------
+        # IF NEW FILE UPLOADED → DELETE OLD FILE + UPLOAD NEW
         if upload_file:
-            upload_folder = os.path.join(settings.MEDIA_ROOT, "step_content")
-            os.makedirs(upload_folder, exist_ok=True)
+            # DELETE OLD FILE FROM S3
+            if detail.file_url:
+                try:
+                    parsed_url = urlparse(detail.file_url)
+                    old_s3_key = parsed_url.path.lstrip("/")  # remove leading "/"
 
-            saved_filename = f"{detail.id}_{upload_file.name}"
-            saved_path = os.path.join(upload_folder, saved_filename)
+                    s3.delete_object(
+                        Bucket=settings.AWS_BUCKET,
+                        Key=old_s3_key
+                    )
+                except Exception as e:
+                    print("Failed to delete old S3 file:", str(e))
 
-            with open(saved_path, "wb+") as destination:
-                for chunk in upload_file.chunks():
-                    destination.write(chunk)
+            # DETERMINE FOLDER
+            folder_map = {
+                "video": "videos",
+                "audio": "audios",
+                "pdf": "documents",
+                "document": "documents",
+                "image": "images",
+            }
+            folder_name = folder_map.get(content_type, "others")
 
-            detail.file_url = f"{settings.MEDIA_URL}step_content/{saved_filename}"
+            # UPLOAD NEW FILE TO S3
+            new_filename = f"{uuid.uuid4()}_{upload_file.name}"
+            s3_key = f"{folder_name}/{new_filename}"
 
-        # ---------------------------
+            try:
+                s3.upload_fileobj(
+                    upload_file,
+                    settings.AWS_BUCKET,
+                    s3_key,
+                    ExtraArgs={"ContentType": upload_file.content_type}
+                )
+            except Exception as e:
+                return render(request, "client/process/update_step_content_detail.html", {
+                    "content": content,
+                    "detail": detail,
+                    "error": f"S3 upload failed: {str(e)}"
+                })
+
+            # Update file URL
+            detail.file_url = f"{settings.AWS_BASE_URL}{s3_key}"
+
         # UPDATE DB FIELDS
-        # ---------------------------
         detail.language_id = language_id
         detail.duration_or_no_pages = int(duration_or_no_pages)
         detail.is_active = is_active
@@ -1023,49 +1060,44 @@ def add_voice_over(request, detail_id):
     if "user_id" not in request.session:
         return redirect("accounts:login")
 
-    detail = get_object_or_404(
-        StepContentDetail,
-        pk=detail_id
-    )
-
+    detail = get_object_or_404(StepContentDetail, pk=detail_id)
     error = None
 
     languages = {
-                    'EN' : 'English',
-                    'TEL' : 'Telugu',
-                    'HIN' : 'Hindi'
-                }
+        'EN': 'English',
+        'TEL': 'Telugu',
+        'HIN': 'Hindi',
+        'KAN': 'Kannada',
+        'MAL': 'Malayalam'
+    }
+
+    # INIT S3 CLIENT
+    s3 = boto3.client(
+        "s3",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY,
+        aws_secret_access_key=settings.AWS_SECRET_KEY
+    )
+
     if request.method == "POST":
         language_id = request.POST.get("language_id")
-        language = request.POST.get("language")  # optional display value
-        # voice_over_file_type = request.POST.get("voice_over_file_type")
-
         upload_file = request.FILES.get("upload_file")
-        voice_over_file_type = os.path.splitext(upload_file.name)[1].lower()
-        language = languages[language_id] 
-        # ---------------------------
-        # VALIDATIONS
-        # ---------------------------
-        
-        print(language_id)
-        print(language)
-        print(voice_over_file_type)
-        print(upload_file)
+
+        # VALIDATION
         if not language_id:
             error = "Language is required."
-        elif not voice_over_file_type:
-            error = "Voice over file type is required."
         elif not upload_file:
             error = "Please upload a voice over file."
 
-        # Validate audio file extensions
+        allowed_exts = [".mp3", ".wav", ".aac", ".m4a"]
+
         if upload_file:
             ext = os.path.splitext(upload_file.name)[1].lower()
-            print("file extention is ",ext)
-            allowed_exts = [".mp3", ".wav", ".aac", ".m4a"]
-
             if ext not in allowed_exts:
-                error = f"Invalid file format. Allowed: mp3, wav, aac, m4a and the file extension is {ext}"
+                error = (
+                    f"Invalid file format. Allowed: mp3, wav, aac, m4a. "
+                    f"Uploaded: {ext}"
+                )
 
         if error:
             return render(
@@ -1077,45 +1109,50 @@ def add_voice_over(request, detail_id):
                 }
             )
 
-        # ---------------------------
-        # SAVE FILE LOCALLY
-        # ---------------------------
-        upload_dir = os.path.join(
-            settings.MEDIA_ROOT,
-            "voice_overs"
-        )
-        os.makedirs(upload_dir, exist_ok=True)
+        # DETERMINE FILE TYPE
+        voice_over_file_type = "audio"
 
-        # Unique filename
-        filename = (
-            f"{detail.id}_{language_id}_{uuid.uuid4()}"
-            f"{os.path.splitext(upload_file.name)[1]}"
+        # UPLOAD TO S3
+        unique_filename = (
+            f"{detail.step_content_detail_id}_"
+            f"{language_id}_"
+            f"{uuid.uuid4()}_{upload_file.name}"
         )
 
-        file_path = os.path.join(upload_dir, filename)
+        s3_key = f"voice_overs/{unique_filename}"
 
-        with open(file_path, "wb+") as destination:
-            for chunk in upload_file.chunks():
-                destination.write(chunk)
+        try:
+            s3.upload_fileobj(
+                upload_file,
+                settings.AWS_BUCKET,
+                s3_key,
+                ExtraArgs={
+                    "ContentType": upload_file.content_type,
+                }
+            )
+        except Exception as e:
+            return render(
+                request,
+                "client/process/add_voice_over.html",
+                {
+                    "detail": detail,
+                    "error": f"S3 upload failed: {str(e)}"
+                }
+            )
 
-        file_url = f"{settings.MEDIA_URL}voice_overs/{filename}"
+        file_url = f"{settings.AWS_BASE_URL}{s3_key}"
 
-        # ---------------------------
         # SAVE DB RECORD
-        # ---------------------------
         StepContentVoiceOver.objects.create(
             step_content_detail=detail,
             voice_over_file_type=voice_over_file_type,
             file_url=file_url,
             language_id=language_id,
-            language=language,
+            language=languages.get(language_id),
             is_active=True
         )
 
-        messages.success(
-            request,
-            "Voice over uploaded successfully!"
-        )
+        messages.success(request, "Voice over uploaded successfully!")
 
         return redirect(
             "client:voice_over_list",
@@ -1187,21 +1224,26 @@ def update_voice_over(request, voice_over_id):
         "MAL": "Malayalam",
     }
 
+    # INIT S3 CLIENT
+    s3 = boto3.client(
+        "s3",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY,
+        aws_secret_access_key=settings.AWS_SECRET_KEY
+    )
+
     if request.method == "POST":
         language_id = request.POST.get("language_id")
         voice_over_file_type = request.POST.get("voice_over_file_type")
         upload_file = request.FILES.get("upload_file")
         is_active = request.POST.get("is_active") == "on"
 
-        # ---------------------------
         # VALIDATION
-        # ---------------------------
         if not language_id:
             error = "Language is required."
         elif not voice_over_file_type:
             error = "Voice over file type is required."
 
-        # Validate file only if uploaded
         if upload_file:
             ext = os.path.splitext(upload_file.name)[1].lower()
             allowed_exts = [".mp3", ".wav", ".aac", ".m4a"]
@@ -1219,38 +1261,49 @@ def update_voice_over(request, voice_over_id):
                 }
             )
 
-        # ---------------------------
-        # UPDATE FILE (OPTIONAL)
-        # ---------------------------
+        # UPDATE FILE (IF NEW FILE)
         if upload_file:
-            # delete old file
-            old_path = voice_over.file_url.replace(settings.MEDIA_URL, "")
-            old_full_path = os.path.join(settings.MEDIA_ROOT, old_path)
+            try:
+                old_key = voice_over.file_url.replace(
+                    f"{settings.AWS_BASE_URL}/", ""
+                )
+                s3.delete_object(
+                    Bucket=settings.AWS_BUCKET,
+                    Key=old_key
+                )
+            except Exception:
+                pass  # safe fail (file may already be gone)
 
-            if os.path.exists(old_full_path):
-                os.remove(old_full_path)
-
-            # save new file
-            upload_dir = os.path.join(settings.MEDIA_ROOT, "voice_overs")
-            os.makedirs(upload_dir, exist_ok=True)
-
-            filename = (
+            new_filename = (
                 f"{voice_over.step_content_detail_id}_"
-                f"{language_id}_{uuid.uuid4()}"
-                f"{os.path.splitext(upload_file.name)[1]}"
+                f"{language_id}_"
+                f"{uuid.uuid4()}_{upload_file.name}"
             )
 
-            full_path = os.path.join(upload_dir, filename)
+            new_s3_key = f"voice_overs/{new_filename}"
 
-            with open(full_path, "wb+") as dest:
-                for chunk in upload_file.chunks():
-                    dest.write(chunk)
+            try:
+                s3.upload_fileobj(
+                    upload_file,
+                    settings.AWS_BUCKET,
+                    new_s3_key,
+                    ExtraArgs={
+                        "ContentType": upload_file.content_type,
+                    }
+                )
+            except Exception as e:
+                return render(
+                    request,
+                    "client/process/update_voice_over.html",
+                    {
+                        "voice_over": voice_over,
+                        "error": f"S3 upload failed: {str(e)}"
+                    }
+                )
 
-            voice_over.file_url = f"{settings.MEDIA_URL}voice_overs/{filename}"
+            voice_over.file_url = f"{settings.AWS_BASE_URL}{new_s3_key}"
 
-        # ---------------------------
-        # UPDATE META FIELDS (THIS WAS MISSING)
-        # ---------------------------
+        # UPDATE META FIELDS
         voice_over.language_id = language_id
         voice_over.language = LANGUAGE_MAP.get(language_id, language_id)
         voice_over.voice_over_file_type = voice_over_file_type
@@ -1271,7 +1324,6 @@ def update_voice_over(request, voice_over_id):
         }
     )
 
-
 def caption_list(request, detail_id):
     detail = get_object_or_404(StepContentDetail, pk=detail_id)
 
@@ -1283,9 +1335,15 @@ def caption_list(request, detail_id):
     for c in captions:
         if c.file_url:
             filename = os.path.basename(urlparse(c.file_url).path)
+            print('file name is ',filename)
 
-            # Remove UUID (before first underscore)
-            clean_name = filename.split('_', 1)[1]
+            # Step 1: remove prefix (everything before first dot)
+            name_with_ext = filename.split(".", 1)[1]  
+
+            # Step 2: remove extension
+            clean_name = os.path.splitext(name_with_ext)[0]
+            print(clean_name)
+
 
             c.caption_filename = clean_name
         else:
@@ -1313,13 +1371,20 @@ def add_captions(request, detail_id):
         "srt": "SubRip"
     }
 
+    # INIT S3 CLIENT
+    s3 = boto3.client(
+        "s3",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY,
+        aws_secret_access_key=settings.AWS_SECRET_KEY
+    )
+
     if request.method == "POST":
         caption_file_type = request.POST.get("caption_file_type")
         upload_file = request.FILES.get("upload_file")
+        print(upload_file)
 
-        # ---------------------------
         # VALIDATIONS
-        # ---------------------------
         if not caption_file_type:
             error = "Caption file type is required."
         elif caption_file_type not in CAPTION_TYPES:
@@ -1346,30 +1411,32 @@ def add_captions(request, detail_id):
                 }
             )
 
-        # ---------------------------
-        # SAVE FILE LOCALLY
-        # ---------------------------
-        upload_dir = os.path.join(
-            settings.MEDIA_ROOT,
-            "captions"
-        )
-        os.makedirs(upload_dir, exist_ok=True)
+        # UPLOAD FILE TO S3
+        filename = f"{detail.id}_{uuid.uuid4()}.{upload_file}"
+        s3_key = f"captions/{filename}"
 
-        filename = (
-            f"{detail.id}_{uuid.uuid4()}.{caption_file_type}"
-        )
+        try:
+            s3.upload_fileobj(
+                upload_file,
+                settings.AWS_BUCKET,
+                s3_key,
+                ExtraArgs={
+                    "ContentType": upload_file.content_type,
+                }
+            )
+        except Exception as e:
+            return render(
+                request,
+                "client/process/add_captions.html",
+                {
+                    "detail": detail,
+                    "error": f"S3 upload failed: {str(e)}"
+                }
+            )
 
-        file_path = os.path.join(upload_dir, filename)
+        file_url = f"{settings.AWS_BASE_URL}{s3_key}"
 
-        with open(file_path, "wb+") as destination:
-            for chunk in upload_file.chunks():
-                destination.write(chunk)
-
-        file_url = f"{settings.MEDIA_URL}captions/{filename}"
-
-        # ---------------------------
         # SAVE DB RECORD
-        # ---------------------------
         StepContentCaptions.objects.create(
             step_content_voice_over=detail,
             caption_file_type=caption_file_type,
@@ -1441,45 +1508,83 @@ def update_caption(request, caption_id):
     detail = caption.step_content_voice_over
     error = None
 
+    # INIT S3 CLIENT
+    s3 = boto3.client(
+        "s3",
+        region_name=settings.AWS_REGION,
+        aws_access_key_id=settings.AWS_ACCESS_KEY,
+        aws_secret_access_key=settings.AWS_SECRET_KEY
+    )
+
     if request.method == "POST":
         caption_file_type = request.POST.get("caption_file_type")
         upload_file = request.FILES.get("upload_file")
-        is_active = True if request.POST.get("is_active") == "on" else False
+        is_active = request.POST.get("is_active") == "on"
 
+        # VALIDATION
         if not caption_file_type:
             error = "Caption file type required."
 
         if upload_file:
             ext = os.path.splitext(upload_file.name)[1].lower().replace(".", "")
-            print("file type ", ext)
             if ext != caption_file_type:
-                error = "Uploaded file does not match selected caption type."
+                error = (
+                    f"Uploaded file type ({ext}) does not match "
+                    f"selected type ({caption_file_type})."
+                )
 
         if error:
             return render(
                 request,
                 "client/process/update_caption.html",
-                {"caption": caption, "error": error}
+                {
+                    "caption": caption,
+                    "error": error
+                }
             )
 
+        # IF NEW FILE → DELETE OLD + UPLOAD NEW
         if upload_file:
-            old_path = caption.file_url.replace(settings.MEDIA_URL, "")
-            old_full = os.path.join(settings.MEDIA_ROOT, old_path)
-            if os.path.exists(old_full):
-                os.remove(old_full)
+            # ---- DELETE OLD FILE FROM S3 ----
+            if caption.file_url:
+                old_key = caption.file_url.replace(
+                    f"{settings.AWS_BASE_URL}/", ""
+                )
 
-            upload_dir = os.path.join(settings.MEDIA_ROOT, "captions")
-            os.makedirs(upload_dir, exist_ok=True)
+                try:
+                    s3.delete_object(
+                        Bucket=settings.AWS_BUCKET,
+                        Key=old_key
+                    )
+                except Exception:
+                    pass  # safe ignore if file missing
 
-            filename = f"{detail.id}_{uuid.uuid4()}.{caption_file_type}"
-            path = os.path.join(upload_dir, filename)
+            # ---- UPLOAD NEW FILE ----
+            filename = f"{detail.id}_{uuid.uuid4()}.{upload_file}"
+            s3_key = f"captions/{filename}"
 
-            with open(path, "wb+") as f:
-                for chunk in upload_file.chunks():
-                    f.write(chunk)
+            try:
+                s3.upload_fileobj(
+                    upload_file,
+                    settings.AWS_BUCKET,
+                    s3_key,
+                    ExtraArgs={
+                        "ContentType": upload_file.content_type,
+                    }
+                )
+            except Exception as e:
+                return render(
+                    request,
+                    "client/process/update_caption.html",
+                    {
+                        "caption": caption,
+                        "error": f"S3 upload failed: {str(e)}"
+                    }
+                )
 
-            caption.file_url = f"{settings.MEDIA_URL}captions/{filename}"
+            caption.file_url = f"{settings.AWS_BASE_URL}{s3_key}"
 
+        # UPDATE META DATA
         caption.caption_file_type = caption_file_type
         caption.is_active = is_active
         caption.save()
@@ -1492,9 +1597,10 @@ def update_caption(request, caption_id):
     return render(
         request,
         "client/process/update_caption.html",
-        {"caption": caption}
+        {
+            "caption": caption
+        }
     )
-
 
 def operator_process_list(request, process_id):
     if "user_id" not in request.session:
@@ -1584,3 +1690,45 @@ def activate_mapping(request, operator_process_id):
     mapping.save(update_fields=["is_active"])
 
     return redirect("client:operator_process_list", process_id = mapping.process_id)
+
+def update_mapping(request, mapping_id):
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    # Get the existing mapping
+    mapping = get_object_or_404(OperatorProcess, operator_process_id=mapping_id)
+    process = mapping.process
+
+    # Get all active operators
+    operators = User.objects.filter(type_id=4, is_active=True)
+
+    if request.method == "POST":
+        new_operator_id = request.POST.get("operator_id")
+        new_operator = get_object_or_404(User, user_id=new_operator_id)
+
+        # Check if new mapping already exists
+        if OperatorProcess.objects.filter(process=process, operator=new_operator).exclude(operator_process_id=mapping_id).exists():
+            context = {
+                "process": process,
+                "mappings": OperatorProcess.objects.filter(process=process.process_id),
+                "toast_message": f"Operator '{new_operator.name}' is already mapped with this process.",
+                "toast_type": "warning",
+            }
+        else:
+            # Update the mapping
+            mapping.operator = new_operator
+            mapping.save()
+            context = {
+                "process": process,
+                "mapping": OperatorProcess.objects.filter(process=process),
+                "toast_message": f"Mapping updated successfully to '{new_operator.name}'.",
+                "toast_type": "success",
+            }
+
+        return redirect(reverse("client:operator_process_list", args=[process.process_id]), context)
+
+    return render(request, "client/process/update_mapping.html", {
+        "mapping": mapping,
+        "process": process,
+        "operators": operators,
+    })

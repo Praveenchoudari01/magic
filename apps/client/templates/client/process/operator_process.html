@@ -66,7 +66,7 @@
           </td>
 
           <td>
-            <a href="#" class="text-primary me-2" title="Edit">
+            <a href="{% url 'client:update_mapping' m.operator_process_id %}" class="text-primary me-2" title="Edit">
               <i class="bi bi-pencil-fill fs-6"></i></a>
 
             {% if m.is_active %}
@@ -83,6 +83,7 @@
         {% empty %}
         <tr>
           <td colspan="5" class="text-center py-3">No Operators Mapped</td>
+          <td></td>
           <td></td>
           <td></td>
           <td></td>

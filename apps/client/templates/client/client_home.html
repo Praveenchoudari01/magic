@@ -197,9 +197,8 @@
         <div class="icon-circle"><i class="bi bi-people"></i></div>
         <h5>Manage Operators</h5>
         <p class="text-muted">View, add, and manage your Operators.</p>
-        <p class="line">Total number of operators <span>6</span></p>
-        <p class="line">Mapped Operators <span>4</span></p>
-        <p class="line">Un-Mapped Operators <span>2</span></p>
+        <p class="line">Total number of operators <span>{{ total_operators }}</span></p>
+
         <a href="{% url 'client:client_user_list' %}" class="btn btn-gradient btn-sm mt-3">Go to Operators</a>
       </div>
     </div>
@@ -209,9 +208,8 @@
         <div class="icon-circle"><i class="bi bi-speedometer2"></i></div>
         <h5>Manage Processes</h5>
         <p class="text-muted">View, add, and manage your Processes.</p>
-        <p class="line">Total number of processes <span>5</span></p>
-        <p class="line">Mapped Processes <span>2</span></p>
-        <p class="line">Un-Mapped Processes <span>3</span></p>
+        <p class="line">Total number of processes <span>{{ total_processes }}</span></p>
+
         <a href="{% url 'client:processes' %}" class="btn btn-gradient btn-sm mt-3">Processes</a>
       </div>
     </div>
@@ -221,16 +219,15 @@
         <div class="icon-circle"><i class="bi bi-headset-vr"></i></div>
         <h5>Manage Devices</h5>
         <p class="text-muted">Manage and add VR devices</p>
-        <p class="line">Total VR devices <span>10</span></p>
-        <p class="line">Active VR devices <span>6</span></p>
-        <p class="line">In-Active VR devices <span>4</span></p>
+        <p class="line">Total VR devices <span>{{ total_devices }}</span></p>
+
         <a href="{% url 'client:client_profile' %}" class="btn btn-gradient btn-sm mt-3">VR Devices</a>
       </div>
     </div>
   </div>
 
   <!-- Notifications -->
-  <div class="mt-5">
+  <!-- <div class="mt-5">
     <div class="alert alert-dismissible fade show alert-gradient" role="alert">
       <i class="bi bi-info-circle"></i>
       <span class="fw-semibold">System Updates & Recent Activity</span>
@@ -246,7 +243,7 @@
 
       <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
     </div>
-  </div>
+  </div> -->
 
 </div>
 {% endblock %}

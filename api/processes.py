@@ -4,7 +4,6 @@ from .auth_middleware import HeaderAuthMiddleware
 import hmac
 import hashlib
 
-
 app = FastAPI()
 
 app.add_middleware(HeaderAuthMiddleware)
@@ -86,9 +85,10 @@ def get_processes(
 
         # Fetch processes
         query = """
-            SELECT process_id, process_name, process_desc, est_process_time, no_of_steps
+            SELECT process_id, process_name, process_desc, est_process_time, no_of_steps, updated_at
             FROM processes 
-            WHERE client_id = %s AND is_active = 1;
+            WHERE client_id = %s AND is_active = 1
+            ORDER BY id;
         """ 
         cursor.execute(query, (client_id,))
         processes_rows = cursor.fetchall()
@@ -99,7 +99,7 @@ def get_processes(
 
             # Fetch steps for this process
             step_query = """
-                SELECT step_id, step_name, step_desc, est_step_time, step_sr_no
+                SELECT step_id, step_name, step_desc, est_step_time, step_sr_no, updated_at
                 FROM steps 
                 WHERE process_id = %s AND is_active = 1
                 ORDER BY step_sr_no ASC;
@@ -115,9 +115,10 @@ def get_processes(
                 print("step id is ",step_id)
 
                 step_content_query = """
-                    SELECT step_content_id, name, content_type
+                    SELECT step_content_id, name, content_type, updated_at
                     FROM step_contents
                     WHERE step_id = %s AND is_active = 1
+                    ORDER BY id
                 """
 
                 cursor.execute(step_content_query, (step_id))
@@ -130,9 +131,10 @@ def get_processes(
                     print("step content_id is ",step_content_id)
 
                     step_content_details_query = """ 
-                        SELECT step_content_detail_id, content_language_id, file_url, duration_or_no_pages
+                        SELECT step_content_detail_id, content_language_id, file_url, duration_or_no_pages, updated_at
                         FROM step_content_details
                         WHERE step_content_id = %s AND is_active = 1
+                        ORDER BY id
                     """
                     cursor.execute(step_content_details_query, (step_content_id))
                     step_content_details_rows = cursor.fetchall()
@@ -145,9 +147,10 @@ def get_processes(
                         print("step_content_detail_id is ", step_content_detail_id)
 
                         voice_over_query = """ 
-                            SELECT step_content_voice_over_id, voice_over_file_type, language_id, language, file_url
+                            SELECT step_content_voice_over_id, voice_over_file_type, language_id, language, file_url, updated_at
                             FROM step_content_voice_over
                             WHERE step_content_detail_id = %s AND is_active = 1
+                            ORDER BY id
                         """
                         cursor.execute(voice_over_query, (step_content_detail_id))
                         voice_overs_list = cursor.fetchall()
@@ -161,13 +164,15 @@ def get_processes(
                                 "voice_over_type" : voice_over["voice_over_file_type"],
                                 "language_id" : voice_over["language_id"],
                                 "language" : voice_over["language"],
-                                "file_url" : voice_over["file_url"]
+                                "file_url" : voice_over["file_url"],
+                                "updated_at" : voice_over["updated_at"].strftime("%Y-%m-%d %H:%M:%S.%f"),
                             })
 
                         captions_query = """
-                            SELECT caption_id, file_url, caption_file_type
+                            SELECT caption_id, file_url, caption_file_type, updated_at
                             FROM step_content_captions
                             WHERE step_content_detail_id = %s AND is_active = 1
+                            ORDER BY id
                         """
                         cursor.execute(captions_query, (step_content_detail_id))
                         captions_list = cursor.fetchall()
@@ -178,7 +183,8 @@ def get_processes(
                             captions.append({
                                 "caption_id" : caption['caption_id'],
                                 "file_url" : caption['file_url'],
-                                "caption_file_type" : caption['caption_file_type']
+                                "caption_file_type" : caption['caption_file_type'],
+                                "updated_at" : caption['updated_at'].strftime("%Y-%m-%d %H:%M:%S.%f")
                             })
 
                         languages.append({
@@ -187,6 +193,7 @@ def get_processes(
                             "content_language_id" : content_details['content_language_id'],
                             "file_url" : content_details['file_url'],
                             "duration_or_no_pages" : content_details['duration_or_no_pages'],
+                            "updated_at" : content_details['updated_at'].strftime("%Y-%m-%d %H:%M:%S.%f"),
                             "step_content_voice_over" : step_content_voice_over,
                             "captions" : captions
 
@@ -195,6 +202,7 @@ def get_processes(
                     step_contents.append({
                         "step_content_id" : step_content['step_content_id'],
                         "content_type" : step_content['content_type'],
+                        "updated_at" : step_content['updated_at'].strftime("%Y-%m-%d %H:%M:%S.%f"),
                         "languages" : languages
                     })
 
@@ -204,6 +212,7 @@ def get_processes(
                     "step_desc": step["step_desc"],
                     "est_step_time": step["est_step_time"],
                     "step_sr_no": step["step_sr_no"],
+                    "updated_at" : step['updated_at'].strftime("%Y-%m-%d %H:%M:%S.%f"),
                     "step_contents" : step_contents
                 })
 
@@ -215,6 +224,7 @@ def get_processes(
                 "process_desc": process["process_desc"],
                 "est_process_time": process["est_process_time"],
                 "no_of_steps": process["no_of_steps"],
+                "updated_at" : process['updated_at'].strftime("%Y-%m-%d %H:%M:%S.%f"),
                 "steps": steps_list
             })
         
