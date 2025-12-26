@@ -53,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.accounts.middleware.InactivityLogoutMiddleware',
 ]
 
 ROOT_URLCONF = 'magic.urls'
@@ -158,3 +159,5 @@ AWS_REGION = env("AWS_REGION")
 AWS_ACCESS_KEY = env("AWS_ACCESS_KEY")
 AWS_SECRET_KEY = env("AWS_SECRET_KEY")
 AWS_BASE_URL = env("AWS_S3_BASE_URL")
+
+SESSION_INACTIVITY_TIMEOUT = 30 * 60  # 30 minutes

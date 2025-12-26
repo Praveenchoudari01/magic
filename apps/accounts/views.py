@@ -43,7 +43,6 @@ def login(request):
                 role_name = user.type_id.type_name.lower() if user.type_id else None
                 request.session['role_name'] = role_name
                 request.session['user_email'] = user.email
-                request.session.set_expiry(30 * 60)
 
                 # Audit Trail (LOGIN)
                 login = AuditTrail.objects.create(
