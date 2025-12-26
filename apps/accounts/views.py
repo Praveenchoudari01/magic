@@ -1,8 +1,8 @@
+from django.http import HttpResponseForbidden
 from django.shortcuts import render,redirect
 from apps.accounts.models import User, AuditTrail, PasswordReset
 from apps.product_owner.models import Client
 from django.urls import reverse
-from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from jose import jwt
 from datetime import datetime, timedelta
@@ -11,7 +11,7 @@ from apps.accounts.utils import perform_logout
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
 
 # Create your views here.
 @csrf_protect
@@ -26,27 +26,24 @@ def login(request):
         email = request.POST.get("email", "").strip()
         password = request.POST.get("password", "")
 
-        # print(f"🔹 Login attempt with email: {email}")  # Debug email
-
         # Automated email verification
         if not User.objects.filter(email=email, is_active=True).exists():
-            # print("❌ User does not exist or is inactive")
             error = "Invalid email or password."
             return render(request, "accounts/login.html", {"error": error, "success": success})
 
         try:
             user = User.objects.get(email=email, is_active=True)
-
             if user.check_password(password):
                 # Set session
+                request.session.flush() 
                 request.session['user_id'] = str(user.user_id)
-                request.session["client_id"] = str(user.client.client_id)
                 request.session['user_name'] = user.name
                 request.session['department_head'] = int(user.is_department_head)
                 request.session['type_id'] = user.type_id.type_id
                 role_name = user.type_id.type_name.lower() if user.type_id else None
                 request.session['role_name'] = role_name
                 request.session['user_email'] = user.email
+                request.session.set_expiry(30 * 60)
 
                 # Audit Trail (LOGIN)
                 login = AuditTrail.objects.create(
@@ -64,16 +61,13 @@ def login(request):
                     return redirect('accounts:change_password')
                 
                 if role_name == "product owner":
-                    # Redirect to Product Owner dashboard
                     response = redirect(reverse("product_owner:dashboard_home"))
-
                 elif role_name == "client":
-                    # print("🔹 Redirecting to Client Admin dashboard")
                     request.session["client_name"] = user.client.client_name
                     request.session["client_id"] = str(user.client.client_id)
                     response = redirect(reverse("client:client_home"))
                 else:
-                    pass
+                    return HttpResponseForbidden("Unauthorized role")
 
                 return response
 

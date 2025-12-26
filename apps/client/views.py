@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.conf import settings
 from apps.accounts.utils import perform_logout
-from apps.product_owner.models import Client
+from apps.product_owner.models import Client, ClientConfig
 from apps.accounts.models import User, Type
 from apps.client.models import Department, VRDevice, Process, Step, StepContent, StepContentDetail,StepContentCaptions,StepContentVoiceOver, OperatorProcess
 from django.contrib import messages
@@ -70,10 +70,13 @@ def client_user_list(request):
     # fetch departments for dropdown
     departments = Department.objects.filter(client=client_admin.client, is_active=True)
 
+    toast = request.session.pop("toast", None)
+
     # render template
     return render(request, "client/users.html", {
         "users": users,
         "departments": departments,
+        "toast": toast
     })
 
 #View for creating the user 
@@ -82,19 +85,29 @@ def add_client_user(request):
     if "user_id" not in request.session:
         return redirect("accounts:login")
 
-    t = Type.objects.get(pk=4)
-    # print("Type id is", t.type_id)
-
     client_admin = User.objects.get(user_id=request.session["user_id"])
-    # print("client admin from add_client_user view ",client_admin)
-
-    users = User.objects.filter(client=client_admin.client)
-    # print("users from  add_client_user view ", users)
 
     user = User.objects.all()
 
     # Fetch departments for dropdown
     departments = Department.objects.filter(client=client_admin.client, is_active=True)
+
+     # 🔹 Count active operators
+    active_operator_count = User.objects.filter(
+        client=client_admin.client,
+        type_id=4,
+        is_active=True
+    ).count()
+
+    client_config = ClientConfig.objects.get(client=client_admin.client)
+
+    # 🔹 Check operator limit
+    if active_operator_count >= client_config.no_of_operators:
+        request.session["toast"] = {
+            "type": "danger",
+            "message": "User limit reached. Please deactivate any other operator to add a new user."
+        }
+        return redirect("client:client_user_list")
 
     if request.method == "POST":
         name = request.POST.get("name").strip()
@@ -125,7 +138,11 @@ def add_client_user(request):
         # user.type_id = Type.objects.get(pk=4)
         user.save()
 
-        return redirect("client:client_user_list")  # redirect to user list page
+        request.session["toast"] = {
+            "type": "success",
+            "message": f"Operator '{name}' added successfully."
+        }
+        return redirect("client:client_user_list")
 
     return render(request, "client/add_client_user.html", {"departments": departments})
 
@@ -147,6 +164,10 @@ def user_update(request, pk):
         user.department_id = request.POST.get('department_id')
         user.is_department_head = request.POST.get('is_department_head') == 'True'
         user.save()
+        request.session["toast"] = {
+            "type": "success",
+            "message": f"Operator '{user.name}' updated successfully."
+        }
         return redirect("client:client_user_list")
 
     return render(request, "client/user_update.html", {"user": user, "departments": departments})
@@ -156,20 +177,56 @@ def user_activate(request, pk):
     if "user_id" not in request.session:
         return redirect("accounts:login")
 
-    user = get_object_or_404(User, pk=pk)
+    client_admin = User.objects.get(user_id=request.session["user_id"])
+    user = get_object_or_404(User, pk=pk, client=client_admin.client)
+
+    # 🔹 Count active operators (excluding this user)
+    active_operator_count = User.objects.filter(
+        client=client_admin.client,
+        type_id=4,
+        is_active=True
+    ).exclude(pk=user.pk).count()
+
+    client_config = ClientConfig.objects.get(client=client_admin.client)
+
+    # ❌ LIMIT REACHED → BLOCK ACTIVATION
+    if active_operator_count >= client_config.no_of_operators:
+        request.session["toast"] = {
+            "type": "danger",
+            "message": "Deactivate any other operator to activate this operator."
+        }
+        return redirect("client:client_user_list")
+
+    # ✅ ACTIVATE USER
     user.is_active = True
-    user.save(update_fields=['is_active'])
+    user.save(update_fields=["is_active"])
+
+    request.session["toast"] = {
+        "type": "success",
+        "message": f"Operator '{user.name}' activated successfully."
+    }
+
     return redirect("client:client_user_list")
+
 
 #Deactivate the Operator
 def user_deactivate(request, pk):
     if "user_id" not in request.session:
         return redirect("accounts:login")
-    
-    user = get_object_or_404(User, pk=pk)
+
+    client_admin = User.objects.get(user_id=request.session["user_id"])
+    user = get_object_or_404(User, pk=pk, client=client_admin.client)
+
     user.is_active = False
-    user.save(update_fields=['is_active'])
+    user.save(update_fields=["is_active"])
+
+    request.session["toast"] = {
+        "type": "danger",
+        "message": f"Operator '{user.name}' deactivated successfully."
+    }
+
     return redirect("client:client_user_list")
+
 
 # Creating the department, update, activation and deactivation views to handle the department data
 #Department listing page
@@ -180,8 +237,8 @@ def department_list(request):
     user = User.objects.get(user_id=request.session["user_id"])
     client = user.client
     departments = Department.objects.filter(client=client)
-
-    return render(request, "client/department.html", {"departments": departments})
+    toast = request.session.pop("toast", None)
+    return render(request, "client/department.html", {"departments": departments, "toast": toast})
 
 #department adding page
 def add_department(request):
@@ -194,8 +251,7 @@ def add_department(request):
 
     user_agent = request.META.get("HTTP_USER_AGENT", "")
     browser_info = httpagentparser.simple_detect(user_agent)
-    browser_name = browser_info[1] if len(browser_info) > 1 else "Unknown"
-
+    browser_name = browser_info[1].split()[0] if len(browser_info) > 1 else "Unknown"
     if request.method == "POST":
         department_name = request.POST.get("department_name")
         department_description = request.POST.get("department_description")
@@ -224,6 +280,11 @@ def add_department(request):
             created_ip=request.META.get("REMOTE_ADDR"),
             created_browser=browser_name,
         )
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{department_name}' departmet added successfully."
+            }
+
         return redirect("client:department_list")
 
     return render(request, "client/add_department.html")
@@ -241,6 +302,10 @@ def department_update(request, pk):
         department.updated_by_id = request.session["user_id"]
         department.updated_at = timezone.now()
         department.save()
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{department.department_name}' departmet updated successfully."
+            }
         return redirect("client:department_list")
 
     return render(request, "client/department_update.html", {"department": department})
@@ -258,7 +323,10 @@ def department_deactivate(request, dept_id):
     department.updated_by = user
     department.updated_at = timezone.now()
     department.save()
-    messages.success(request, f"Department '{department.department_name}' deactivated successfully!")
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f" '{department.department_name}' departmet deactivated successfully!"
+            }
     return redirect("client:department_list")
 
 # Activate Department
@@ -272,6 +340,10 @@ def department_activate(request, pk):
     department.updated_by_id = request.session["user_id"]
     department.updated_at = timezone.now()
     department.save()
+    request.session["toast"] = {
+                "type": "success",
+                "message": f" '{department.department_name}' departmet activated successfully!"
+            }
     return redirect("client:department_list")
 
 # VR device Registration
@@ -325,12 +397,14 @@ def vr_device_list_view(request):
         client = user.client
         # print("client id is ",client)
     except (User.DoesNotExist, Client.DoesNotExist):
-        print("User or client not found.")
+        # print("User or client not found.")
         messages.error(request, "User or client not found.")
         return redirect('client:client_home')
 
     devices = VRDevice.objects.filter(client=client).order_by('-created_at')
-    return render(request, 'client/vr_device.html', {'devices': devices})
+    toast = request.session.pop("toast", None)
+
+    return render(request, 'client/vr_device.html', {'devices': devices, 'toast' : toast})
 
 # VR Device Registration View
 def vr_device_register_view(request):
@@ -346,6 +420,23 @@ def vr_device_register_view(request):
     except (User.DoesNotExist, Client.DoesNotExist):
         messages.error(request, "User or client not found.")
         return redirect('client:client_home')
+
+    user_agent = request.META.get("HTTP_USER_AGENT", "")
+    browser_info = httpagentparser.simple_detect(user_agent)
+    browser_name = browser_info[1].split()[0] if len(browser_info) > 1 else "Unknown"
+
+    active_device_count = VRDevice.objects.filter(
+        client=client,
+        is_active=True
+    ).count()
+
+    client_config = ClientConfig.objects.get(client=client)
+    if active_device_count >= client_config.no_of_devices:
+        request.session["toast"] = {
+            "type": "danger",
+            "message": "Device limit reached. Please deactivate any other device to add a new device."
+        }
+        return redirect('client:vr_device_list_view')
 
     if request.method == 'POST':
         device_name = request.POST.get('device_name')
@@ -369,13 +460,12 @@ def vr_device_register_view(request):
                 client=client,
                 created_by=user,
                 updated_by=user,
-                created_ip=get_client_ip(request),
-                created_browser=(request.META.get('HTTP_USER_AGENT') or '').split('/')[0][:100],
+                created_ip=request.META.get("REMOTE_ADDR"),
+                created_browser=browser_name,
             )
             
             client_name = client.client_name
             client_id = client.client_id
-            print(f"client id is {client_id} and client name is {client_name}")
             payload = {
                 "status": "success",
                 "message": "Device registered successfully",
@@ -389,20 +479,15 @@ def vr_device_register_view(request):
             topic = f"magic/vr_devices/register/{code}"  # include unique code in topic
             publish_mqtt_message(topic, payload)
             vrdevice.save()
-            messages.success(request, "VR Device registered successfully!")
+            request.session["toast"] = {
+                "type": "success",
+                "message": f" '{device_name}' device added successfully!"
+            }
             return redirect('client:vr_device_list_view')
 
     return render(request, 'client/vr_device_register.html', {
         'errors': errors
     })
-
-def get_client_ip(request):
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
 
 def vr_device_update(request, device_id):
     if "user_id" not in request.session:
@@ -415,8 +500,11 @@ def vr_device_update(request, device_id):
         device.device_model = request.POST.get('device_model')
         device.device_make = request.POST.get('device_make')
         device.save()
-        messages.success(request, "VR Device updated successfully!")
-        return redirect('client:vr_device_register_view')  # <-- fixed with namespace
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{device.device_name}' device updated successfully!"
+            }
+        return redirect('client:vr_device_list_view')  # <-- fixed with namespace
     return render(request, 'client/vr_device_update.html', {'device': device})
 
 def vr_device_activate(request, device_id):
@@ -424,9 +512,27 @@ def vr_device_activate(request, device_id):
         return redirect("accounts:login")
     
     device = get_object_or_404(VRDevice, pk=device_id)
+
+    active_device_count = VRDevice.objects.filter(
+        client=device.client,
+        is_active=True
+    ).count()
+
+
+    client_config = ClientConfig.objects.get(client=device.client)
+    if active_device_count >= client_config.no_of_devices:
+        request.session["toast"] = {
+            "type": "danger",
+            "message": "Device limit reached. Please deactivate any other device to activate a device."
+        }
+        return redirect('client:vr_device_list_view')
+
     device.is_active = True
     device.save()
-    messages.success(request, "VR Device activated successfully!")
+    request.session["toast"] = {
+                "type": "success",
+                "message": f" '{device.device_name}' device activated successfully!"
+            }
     return redirect('client:vr_device_list_view')
 
 def vr_device_deactivate(request, device_id):
@@ -436,7 +542,10 @@ def vr_device_deactivate(request, device_id):
     device = get_object_or_404(VRDevice, pk=device_id)
     device.is_active = False
     device.save()
-    messages.success(request, "VR Device deactivated successfully!")
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f" '{device.device_name}' device deactivated successfully!"
+            }
     return redirect('client:vr_device_list_view')
 
 # Process Defining
@@ -458,8 +567,11 @@ def processes(request):
         .annotate(operators=Count('operator_processes')).order_by('id')  # <-- Key: operators
     )
 
+    toast = request.session.pop("toast", None)
+
     context = {
-        "processes": processes_list
+        "processes": processes_list,
+        'toast' : toast,
     }
 
     return render(request, "client/process/processes.html", context)
@@ -475,6 +587,19 @@ def add_process(request):
     user = User.objects.get(user_id=user_id)
     client_id = user.client_id
 
+    active_processes_count = Process.objects.filter(
+        client=client_id,
+        is_active=True
+    ).count()
+
+    client_config = ClientConfig.objects.get(client=client_id)
+    if active_processes_count >= client_config.no_of_processes:
+        request.session["toast"] = {
+            "type": "danger",
+            "message": "Process limit reached. Please deactivate any other process to add a new process."
+        }
+        return redirect('client:processes')
+    
     if request.method == "POST":
         process_name = request.POST.get("process_name").strip()
         process_desc = request.POST.get("process_desc").strip()
@@ -490,7 +615,10 @@ def add_process(request):
             client_id=client_id
         )
 
-        messages.success(request, "Process registered successfully!")
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{process_name}' process added successfully!"
+            }
         return redirect("client:processes")
 
     return render(request, "client/process/process_add.html")
@@ -515,7 +643,10 @@ def update_process(request, process_id):
         # updated_at will auto-update here
         process.save()
 
-        messages.success(request, "Process updated successfully!")
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{process.process_name}' process updated successfully!"
+            }
         return redirect("client:processes")
 
     return render(
@@ -535,7 +666,10 @@ def deactivate_process(request, process_id):
     process.is_active = False
     process.save()
 
-    messages.success(request, "Process deactivated successfully!")
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f" '{process.process_name}' process deactivated successfully!"
+            }
     return redirect("client:processes")
 
 # Activate Process
@@ -548,32 +682,43 @@ def activate_process(request, process_id):
         pk=process_id
     )
 
+    active_processes_count = Process.objects.filter(
+        client=process.client,
+        is_active=True
+    ).count()
+
+    print(active_processes_count)
+
+    client_config = ClientConfig.objects.get(client=process.client)
+    if active_processes_count >= client_config.no_of_processes:
+        request.session["toast"] = {
+            "type": "danger",
+            "message": "Process limit reached. Please deactivate any other process to activate process."
+        }
+        return redirect('client:processes')
+
     process.is_active = True
     process.save()
 
-    messages.success(request, "Process activated successfully!")
+    request.session["toast"] = {
+                "type": "success",
+                "message": f" '{process.process_name}' process activated successfully!"
+            }
     return redirect("client:processes")
 
 # Adding the Step for the Process 
 def step_list(request, process_id):
     if "user_id" not in request.session:
         return redirect("accounts:login")
-    
-    error = None 
-    success = None
-    if 'error_message' in request.session:
-        error = request.session.pop('error_message')
-    if 'success_message' in request.session:
-        success = request.session.pop('success_message')
 
     process = get_object_or_404(Process, pk=process_id)
     steps = Step.objects.filter(process_id=process_id).order_by('id')
+    toast = request.session.pop("toast", None)
 
     context = {
         "process": process,
         "steps": steps,
-        "error_message" : error,
-        "success_message" : success
+        "toast" : toast,
     }
 
     return render(request, "client/process/step_list.html", context)
@@ -588,21 +733,20 @@ def add_step(request, process_id):
     process = get_object_or_404(Process, process_id=process_id)
 
     # Count existing steps for this process
-    existing_steps = Step.objects.filter(process=process).count()
+    existing_steps = Step.objects.filter(process=process, is_active=True).count()
 
     # Maximum steps allowed
     allowed_steps = process.no_of_steps
 
     # Restriction check
     if existing_steps >= allowed_steps:
-        messages.error(
-            request,
-            f"You have already added all {allowed_steps} steps for this process."
-        )
-        request.session['error_message'] = f"""You have already added all {allowed_steps} steps for this process.
-                                        If you want to add more messages then please update No of steps,
-                                        Or deactivate any existing step.
+        request.session["toast"] = {
+                "type": "danger",
+                "message": f"""You have already added all {allowed_steps} steps for this process.
+                                        To add new steps "Please update the steps value in process
+                                        or deactivate existing step"
                                     """
+            }
         return redirect("client:step_list", process_id=process_id)
 
     if request.method == "POST":
@@ -620,8 +764,10 @@ def add_step(request, process_id):
             is_active=True
         )
 
-        messages.success(request, "Step added successfully!")
-        request.session['success_message'] = f"{step_name} added successully"
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{step_name}' step added successfully!"
+            }
         return redirect("client:step_list", process_id=process_id)
 
     remaining_steps = allowed_steps - existing_steps
@@ -645,6 +791,10 @@ def step_deactivation(request, step_id):
     )
     step.is_active = False
     step.save()
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f" '{step.step_name}' step deactivated successfully!"
+            }
     return redirect("client:step_list", process_id=step.process_id)
 
 # Activating the step
@@ -652,13 +802,35 @@ def step_activation(request, step_id):
     if "user_id" not in request.session:
         return redirect("accounts:login")
     
-    print("step_id is ", step_id)
+    step_object = get_object_or_404(Step, step_id = step_id)
+    print(step_object.process_id)
+    process = get_object_or_404(Process, pk=step_object.process_id)
+    # Count existing steps for this process
+    existing_steps = Step.objects.filter(process=process, is_active=True).count()
+
+    # Maximum steps allowed
+    allowed_steps = process.no_of_steps
+
+    # Restriction check
+    if existing_steps >= allowed_steps:
+        request.session["toast"] = {
+                "type": "danger",
+                "message": f"""Step limit reached, To activate existing step "Please deactivate any existing active step"
+                                Allowed active steps for this process is '{allowed_steps}'
+                                    """
+            }
+        return redirect("client:step_list", process_id=step_object.process_id)
+
     step = get_object_or_404(
         Step,
         pk=step_id
     )
     step.is_active = True
     step.save()
+    request.session["toast"] = {
+                "type": "success",
+                "message": f" '{step.step_name}' step activated successfully!"
+            }
     return redirect("client:step_list", process_id=step.process_id)
 
 # Update Step
@@ -676,6 +848,10 @@ def update_step(request, step_id):
         step.est_step_time = request.POST.get("est_step_time")
 
         step.save()
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{step.step_name}' step updated successfully!"
+            }
         return redirect("client:step_list", process_id=step.process_id)
     
     return render(
@@ -694,9 +870,11 @@ def step_contents(request, step_id):
     # Load all contents for this step
     contents = StepContent.objects.filter(step=step).order_by('id')
 
+    toast = request.session.pop("toast", None)
     return render(request, "client/process/step_content.html", {
         "step": step,
-        "contents": contents
+        "contents": contents,
+        'toast' : toast,
     })
 
 # Step content adding
@@ -719,7 +897,10 @@ def add_step_content(request, step_id):
             is_active=True
         )
 
-        messages.success(request, "Content added successfully!")
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{name}' step content added successfully!"
+            }
         return redirect("client:step_contents", step_id)
 
     context = {
@@ -737,6 +918,10 @@ def deactivate_step_content(request, content_id):
 
     content.is_active = False
     content.save()
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f" '{content.name}' step content deactivated successfully!"
+            }
     return redirect("client:step_contents", step_id=content.step_id)
 
 #Deactivate step_content
@@ -748,6 +933,10 @@ def activate_step_content(request, content_id):
 
     content.is_active = True
     content.save()
+    request.session["toast"] = {
+                "type": "success",
+                "message": f" '{content.name}' step content activated successfully!"
+            }
     return redirect("client:step_contents", step_id=content.step_id)
 
 #Updating step content
@@ -764,7 +953,10 @@ def update_step_content(request, content_id):
 
         content.save()
 
-        messages.success(request, "Step content updated successfully.")
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{content.name}' step content updated successfully!"
+            }
         return redirect("client:step_contents",step_id=content.step.step_id)
 
     return render(
@@ -798,10 +990,13 @@ def step_content_details(request, content_id):
         # Remove extension
         d.clean_file_name = os.path.splitext(clean_name_with_ext)[0]
 
+    toast = request.session.pop("toast", None)
+
     context = {
         "content": content,
         "details": details,
         "content_type": content_type,
+        'toast' : toast,
     }
 
     return render(request, "client/process/step_content_details.html", context)
@@ -814,7 +1009,7 @@ def add_step_content_detail(request, content_id):
     content = get_object_or_404(StepContent, pk=content_id)
     content_type = content.content_type.lower()
     error = None
-
+    toast = request.session.pop("toast", None)
     # INIT S3 CLIENT
     s3 = boto3.client(
         "s3",
@@ -854,12 +1049,16 @@ def add_step_content_detail(request, content_id):
                 error = "Page count required"
 
         if error:
+            request.session["toast"] = {
+                "type": "danger",
+                "message": f"{error}"
+            }
             return render(request, "client/process/add_step_content_detail.html", {
                 "content": content,
-                "error": error,
                 "language_id": language_id,
                 "duration_or_no_pages": duration_or_no_pages,
                 "is_active": is_active,
+                'toast' : toast,
             })
 
         # DETERMINE S3 FOLDER
@@ -885,10 +1084,17 @@ def add_step_content_detail(request, content_id):
                 s3_key,
                 ExtraArgs={"ContentType": upload_file.content_type}
             )
+            request.session["toast"] = {
+                "type": "success",
+                "message": f"File upload uploaded successfully"
+            }
         except Exception as e:
+            request.session["toast"] = {
+                "type": "danger",
+                "message": f"S3 upload failed: {str(e)}"
+            }
             return render(request, "client/process/add_step_content_detail.html", {
                 "content": content,
-                "error": f"S3 upload failed: {str(e)}"
             })
 
         # FINAL FILE URL
@@ -903,7 +1109,10 @@ def add_step_content_detail(request, content_id):
             is_active=is_active
         )
 
-        messages.success(request, "Content uploaded successfully!")
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{content}' details added successfully!"
+            }
         return redirect("client:step_content_details", content_id=content_id)
 
     return render(request, "client/process/add_step_content_detail.html", {
@@ -918,6 +1127,10 @@ def deactivate_step_content_detail(request, detail_id):
     detail = get_object_or_404(StepContentDetail, pk=detail_id)
     detail.is_active = False
     detail.save()
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f" '{detail.step_content}' detail deactivated successfully!"
+            }
     return redirect("client:step_content_details",content_id=detail.step_content_id)
 
 #Activate step content details
@@ -928,6 +1141,10 @@ def activate_step_content_detail(request, detail_id):
     detail = get_object_or_404(StepContentDetail, pk=detail_id)
     detail.is_active = True
     detail.save()
+    request.session["toast"] = {
+                "type": "success",
+                "message": f" '{detail.step_content}' detail activated successfully!"
+            }
     return redirect("client:step_content_details",content_id=detail.step_content_id)
 
 #Updating the existing uploaded file or content
@@ -939,7 +1156,7 @@ def update_step_content_detail(request, detail_id):
     content = detail.step_content
     content_type = content.content_type.lower()
     error = None
-
+    toast = request.session.pop("toast", None)
     # INIT S3 CLIENT
     s3 = boto3.client(
         "s3",
@@ -976,10 +1193,14 @@ def update_step_content_detail(request, detail_id):
                 error = "Page count required"
 
         if error:
+            request.session["toast"] = {
+                "type": "danger",
+                "message": f" '{error}"
+            }
             return render(request, "client/process/update_step_content_detail.html", {
                 "content": content,
                 "detail": detail,
-                "error": error
+                'toast' : toast,
             })
 
         # IF NEW FILE UPLOADED → DELETE OLD FILE + UPLOAD NEW
@@ -995,7 +1216,10 @@ def update_step_content_detail(request, detail_id):
                         Key=old_s3_key
                     )
                 except Exception as e:
-                    print("Failed to delete old S3 file:", str(e))
+                    request.session["toast"] = {
+                        "type": "danger",
+                        "message": f"""Failed to delete old S3 file"""
+                    }
 
             # DETERMINE FOLDER
             folder_map = {
@@ -1019,10 +1243,14 @@ def update_step_content_detail(request, detail_id):
                     ExtraArgs={"ContentType": upload_file.content_type}
                 )
             except Exception as e:
+                request.session["toast"] = {
+                                    "type": "danger",
+                                    "message": f"S3 upload failed: {str(e)}"
+                                }
                 return render(request, "client/process/update_step_content_detail.html", {
                     "content": content,
                     "detail": detail,
-                    "error": f"S3 upload failed: {str(e)}"
+                    'toast' : toast,
                 })
 
             # Update file URL
@@ -1033,27 +1261,37 @@ def update_step_content_detail(request, detail_id):
         detail.duration_or_no_pages = int(duration_or_no_pages)
         detail.is_active = is_active
         detail.save()
-
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" '{detail.step_content}' step content detail updated successfully!"
+            }
         return redirect(
             "client:step_content_details",
             content_id=detail.step_content_id
         )
 
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f" '{detail.step_content}' step content detail updated failed!"
+            }
     return render(
         request,
         "client/process/update_step_content_detail.html",
         {
             "content": content,
-            "detail": detail
+            "detail": detail,
+            'toast' : toast
         }
     )
 
 def voice_over_list(request, detail_id):
     detail = get_object_or_404(StepContentDetail, pk=detail_id)
     voice_overs = StepContentVoiceOver.objects.filter(step_content_detail=detail)
+    toast = request.session.pop("toast", None)
     return render(request, "client/process/voice_over_list.html", {
         "detail": detail,
         "voice_overs": voice_overs,
+        'toast' : toast,
     })
 
 def add_voice_over(request, detail_id):
@@ -1062,7 +1300,7 @@ def add_voice_over(request, detail_id):
 
     detail = get_object_or_404(StepContentDetail, pk=detail_id)
     error = None
-
+    toast = request.session.pop("toast", None)
     languages = {
         'EN': 'English',
         'TEL': 'Telugu',
@@ -1100,12 +1338,16 @@ def add_voice_over(request, detail_id):
                 )
 
         if error:
+            request.session["toast"] = {
+                "type": "dange",
+                "message": f"'{error}'"
+            }            
             return render(
                 request,
                 "client/process/add_voice_over.html",
                 {
                     "detail": detail,
-                    "error": error
+                    "toast" : toast,
                 }
             )
 
@@ -1131,12 +1373,16 @@ def add_voice_over(request, detail_id):
                 }
             )
         except Exception as e:
+            request.session["toast"] = {
+                "type": "danger",
+                "message": f"S3 upload failed: {str(e)}"
+            }
             return render(
                 request,
                 "client/process/add_voice_over.html",
                 {
                     "detail": detail,
-                    "error": f"S3 upload failed: {str(e)}"
+                    'toast' : toast,
                 }
             )
 
@@ -1152,18 +1398,27 @@ def add_voice_over(request, detail_id):
             is_active=True
         )
 
-        messages.success(request, "Voice over uploaded successfully!")
+        request.session["toast"] = {
+                "type": "success",
+                "message": f" voice over uploaded successfully"
+            }
 
         return redirect(
             "client:voice_over_list",
             detail_id=detail.step_content_detail_id
         )
 
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f" voice over uploaded failed"
+            }
+
     return render(
         request,
         "client/process/add_voice_over.html",
         {
-            "detail": detail
+            "detail": detail,
+            'toast' : toast,
         }
     )
 
@@ -1179,7 +1434,10 @@ def deactivate_voice_over(request, voice_over_id):
     voice_over.is_active = False
     voice_over.save(update_fields=["is_active"])
 
-    messages.success(request, "Voice over deactivated.")
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f"{voice_over.language} voice over deactivated successfully"
+            }
 
     return redirect(
         "client:voice_over_list",
@@ -1198,7 +1456,10 @@ def activate_voice_over(request, voice_over_id):
     voice_over.is_active = True
     voice_over.save(update_fields=["is_active"])
 
-    messages.success(request, "Voice over activated.")
+    request.session["toast"] = {
+                "type": "success",
+                "message": f"{voice_over.language} voice over activated successfully"
+            }
 
     return redirect(
         "client:voice_over_list",
@@ -1215,6 +1476,7 @@ def update_voice_over(request, voice_over_id):
     )
 
     error = None
+    toast = request.session.pop("toast", None)
 
     LANGUAGE_MAP = {
         "EN": "English",
@@ -1252,12 +1514,16 @@ def update_voice_over(request, voice_over_id):
                 error = "Invalid audio format. Allowed: mp3, wav, aac, m4a."
 
         if error:
+            request.session["toast"] = {
+                "type": "danger",
+                "message": f"{error}"
+            }
             return render(
                 request,
                 "client/process/update_voice_over.html",
                 {
                     "voice_over": voice_over,
-                    "error": error
+                    'toast' : toast,
                 }
             )
 
@@ -1292,12 +1558,16 @@ def update_voice_over(request, voice_over_id):
                     }
                 )
             except Exception as e:
+                request.session["toast"] = {
+                    "type": "danger",
+                    "message": f"voice updated failed"
+                }
                 return render(
                     request,
                     "client/process/update_voice_over.html",
                     {
                         "voice_over": voice_over,
-                        "error": f"S3 upload failed: {str(e)}"
+                        'toast' : toast,
                     }
                 )
 
@@ -1310,21 +1580,31 @@ def update_voice_over(request, voice_over_id):
         voice_over.is_active = is_active
 
         voice_over.save()
-
+        request.session["toast"] = {
+                "type": "success",
+                "message": f"{voice_over.language} voice over updated successfully"
+            }
         return redirect(
             "client:voice_over_list",
             detail_id=voice_over.step_content_detail_id
         )
 
+    request.session["toast"] = {
+                "type": "success",
+                "message": f"{voice_over.language} voice over update failed"
+            }
     return render(
         request,
         "client/process/update_voice_over.html",
         {
-            "voice_over": voice_over
-        }
+            "voice_over": voice_over,
+            'toast' : toast
+        } 
     )
 
 def caption_list(request, detail_id):
+    toast = request.session.pop("toast", None)
+
     detail = get_object_or_404(StepContentDetail, pk=detail_id)
 
     captions = StepContentCaptions.objects.filter(
@@ -1352,6 +1632,7 @@ def caption_list(request, detail_id):
     return render(request, "client/process/caption_list.html", {
         "detail": detail,
         "captions": captions,
+        'toast' : toast,
     })
 
 def add_captions(request, detail_id):
@@ -1364,6 +1645,7 @@ def add_captions(request, detail_id):
     )
 
     error = None
+    toast = request.session.pop("toast", None)
 
     # Allowed caption types
     CAPTION_TYPES = {
@@ -1382,7 +1664,6 @@ def add_captions(request, detail_id):
     if request.method == "POST":
         caption_file_type = request.POST.get("caption_file_type")
         upload_file = request.FILES.get("upload_file")
-        print(upload_file)
 
         # VALIDATIONS
         if not caption_file_type:
@@ -1402,12 +1683,16 @@ def add_captions(request, detail_id):
                 )
 
         if error:
+            request.session["toast"] = {
+                "type": "danger",
+                "message": f"{error}"
+            }
             return render(
                 request,
                 "client/process/add_captions.html",
                 {
                     "detail": detail,
-                    "error": error
+                    'toast' : toast,
                 }
             )
 
@@ -1425,12 +1710,16 @@ def add_captions(request, detail_id):
                 }
             )
         except Exception as e:
+            request.session["toast"] = {
+                "type": "danger",
+                "message": f"captions upload failed"
+            }
             return render(
                 request,
                 "client/process/add_captions.html",
                 {
                     "detail": detail,
-                    "error": f"S3 upload failed: {str(e)}"
+                    "toast" : toast,
                 }
             )
 
@@ -1444,22 +1733,27 @@ def add_captions(request, detail_id):
             is_active=True
         )
 
-        messages.success(
-            request,
-            "Caption file uploaded successfully!"
-        )
+        request.session["toast"] = {
+                "type": "success",
+                "message": f"captions added successfully"
+            }
 
         return redirect(
             "client:caption_list",
             detail_id=detail.step_content_detail_id
         )
 
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f"captions uploaded failed"
+            }
     return render(
         request,
         "client/process/add_captions.html",
         {
-            "detail": detail
-        }
+            "detail": detail,
+            'toast' : toast
+        } 
     )
 
 def deactivate_caption(request, caption_id):
@@ -1473,7 +1767,10 @@ def deactivate_caption(request, caption_id):
 
     caption.is_active = False
     caption.save()
-
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f"captions deactivated successfully"
+            }
     return redirect(
         "client:caption_list",
         detail_id=caption.step_content_voice_over_id
@@ -1490,7 +1787,10 @@ def activate_caption(request, caption_id):
 
     caption.is_active = True
     caption.save()
-
+    request.session["toast"] = {
+                "type": "success",
+                "message": f"captions activated successfully"
+            }
     return redirect(
         "client:caption_list",
         detail_id=caption.step_content_voice_over_id
@@ -1507,6 +1807,7 @@ def update_caption(request, caption_id):
 
     detail = caption.step_content_voice_over
     error = None
+    toast = request.session.pop("toast", None)
 
     # INIT S3 CLIENT
     s3 = boto3.client(
@@ -1534,12 +1835,16 @@ def update_caption(request, caption_id):
                 )
 
         if error:
+            request.session["toast"] = {
+                "type": "danger",
+                "message": f"{error}"
+            }
             return render(
                 request,
                 "client/process/update_caption.html",
                 {
                     "caption": caption,
-                    "error": error
+                    "toast": toast,
                 }
             )
 
@@ -1557,7 +1862,10 @@ def update_caption(request, caption_id):
                         Key=old_key
                     )
                 except Exception:
-                    pass  # safe ignore if file missing
+                    request.session["toast"] = {
+                            "type": "danger",
+                            "message": f"captions update failed"
+                        }
 
             # ---- UPLOAD NEW FILE ----
             filename = f"{detail.id}_{uuid.uuid4()}.{upload_file}"
@@ -1573,12 +1881,16 @@ def update_caption(request, caption_id):
                     }
                 )
             except Exception as e:
+                request.session["toast"] = {
+                        "type": "danger",
+                        "message": f"captions updaload failed"
+                    }
                 return render(
                     request,
                     "client/process/update_caption.html",
                     {
                         "caption": caption,
-                        "error": f"S3 upload failed: {str(e)}"
+                        "toast" : toast,
                     }
                 )
 
@@ -1589,11 +1901,19 @@ def update_caption(request, caption_id):
         caption.is_active = is_active
         caption.save()
 
+        request.session["toast"] = {
+                "type": "success",
+                "message": f"captions updated successfully"
+            }
         return redirect(
             "client:caption_list",
             detail_id=detail.step_content_detail_id
         )
 
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f"captions updated failed"
+            }
     return render(
         request,
         "client/process/update_caption.html",
@@ -1605,6 +1925,8 @@ def update_caption(request, caption_id):
 def operator_process_list(request, process_id):
     if "user_id" not in request.session:
         return redirect("accounts:login")
+
+    toast = request.session.pop("toast", None)
 
     # Fetch selected process
     process = Process.objects.get(process_id=process_id)
@@ -1618,17 +1940,26 @@ def operator_process_list(request, process_id):
 
     context = {
         "process": process,
-        "mappings": mappings
+        "mappings": mappings,
+        'toast' : toast,
     }
 
     return render(request, "client/process/operator_process.html", context)
 
 def add_mapping(request, process_id):
+
+    if "user_id" not in request.session:
+        return redirect("accounts:login")
+    
+    toast = request.session.pop("toast", None)
+
     # Get process
     process = Process.objects.get(process_id=process_id)
-
     # Get active operators
-    operators = User.objects.filter(type_id=4, is_active=True)
+    user_id = request.session["user_id"]
+    user = User.objects.get(user_id=user_id)
+    client_id = user.client_id
+    operators = User.objects.filter(type_id=4, is_active=True, client_id=client_id)
 
     if request.method == "POST":
         operator_id = request.POST.get("operator_id")
@@ -1642,12 +1973,10 @@ def add_mapping(request, process_id):
 
         if mapping_exists:
             # Operator already mapped -> send context message
-            context = {
-                "process": process,
-                "mappings": OperatorProcess.objects.filter(process=process),
-                "toast_message": f"Operator '{operator.name}' is already mapped with this process.",
-                "toast_type": "warning",
-            }
+            request.session["toast"] = {
+                "type": "warning",
+                "message": f"Operator {operator}  is already mapped with this process.",
+            }     
         else:
             # Create mapping
             OperatorProcess.objects.create(
@@ -1655,15 +1984,12 @@ def add_mapping(request, process_id):
                 operator=operator,
                 client=process.client
             )
-            context = {
-                "process": process,
-                "mappings": OperatorProcess.objects.filter(process=process),
-                "toast_message": f"Operator '{operator.name}' mapped successfully.",
-                "toast_type": "success",
-            }
-
+            request.session["toast"] = {
+                "type": "success",
+                "message": f"Operator {operator} is mapped successfully.",
+            }           
         # Render the listing page directly with toast message
-        return render(request, "client/process/operator_process.html", context)
+        return redirect("client:operator_process_list", process_id = process.process_id)
 
     # GET request -> show add_mapping page
     return render(request, "client/process/add_mapping.html", {
@@ -1678,7 +2004,10 @@ def deactivate_mapping(request, operator_process_id):
     mapping = get_object_or_404(OperatorProcess, pk=operator_process_id)
     mapping.is_active = False
     mapping.save(update_fields=["is_active"])
-
+    request.session["toast"] = {
+                "type": "danger",
+                "message": f"Mapping deactivated successfully.",
+            }
     return redirect("client:operator_process_list", process_id = mapping.process_id)
 
 # Activation of operator-process mapping 
@@ -1687,6 +2016,10 @@ def activate_mapping(request, operator_process_id):
         return redirect("accounts:login")
     mapping = get_object_or_404(OperatorProcess, pk=operator_process_id)
     mapping.is_active = True
+    request.session["toast"] = {
+                "type": "success",
+                "message": f"Mapping activated successfully.",
+            }
     mapping.save(update_fields=["is_active"])
 
     return redirect("client:operator_process_list", process_id = mapping.process_id)
@@ -1695,12 +2028,17 @@ def update_mapping(request, mapping_id):
     if "user_id" not in request.session:
         return redirect("accounts:login")
     
+    toast = request.session.pop("toast", None)
+
     # Get the existing mapping
     mapping = get_object_or_404(OperatorProcess, operator_process_id=mapping_id)
     process = mapping.process
 
     # Get all active operators
-    operators = User.objects.filter(type_id=4, is_active=True)
+    user_id = request.session["user_id"]
+    user = User.objects.get(user_id=user_id)
+    client_id = user.client_id
+    operators = User.objects.filter(type_id=4, is_active=True, client_id=client_id)
 
     if request.method == "POST":
         new_operator_id = request.POST.get("operator_id")
@@ -1708,23 +2046,31 @@ def update_mapping(request, mapping_id):
 
         # Check if new mapping already exists
         if OperatorProcess.objects.filter(process=process, operator=new_operator).exclude(operator_process_id=mapping_id).exists():
+            request.session["toast"] = {
+                "type": "warning",
+                "message": f"Operator '{new_operator.name}' is already mapped with this process.",
+            }
             context = {
                 "process": process,
                 "mappings": OperatorProcess.objects.filter(process=process.process_id),
-                "toast_message": f"Operator '{new_operator.name}' is already mapped with this process.",
-                "toast_type": "warning",
             }
         else:
             # Update the mapping
             mapping.operator = new_operator
             mapping.save()
+            request.session["toast"] = {
+                "type": "success",
+                "message": f"Mapping updated successfully to '{new_operator.name}'.",
+            }
             context = {
                 "process": process,
                 "mapping": OperatorProcess.objects.filter(process=process),
-                "toast_message": f"Mapping updated successfully to '{new_operator.name}'.",
-                "toast_type": "success",
             }
 
+        request.session["toast"] = {
+                "type": "success",
+                "message": f"Mapping updated successfully to '{new_operator.name}'.",
+            }
         return redirect(reverse("client:operator_process_list", args=[process.process_id]), context)
 
     return render(request, "client/process/update_mapping.html", {

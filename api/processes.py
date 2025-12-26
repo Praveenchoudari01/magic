@@ -17,7 +17,6 @@ def get_operators(
     client_id = client_id_str
     device_id = device_id_str
 
-    print("clinet id from the get operators is ", client_id)
     try:
         db = get_connection()
         cursor = db.cursor()

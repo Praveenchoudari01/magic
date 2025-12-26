@@ -81,5 +81,3 @@ class ClientConfig(models.Model):
     class Meta:
         db_table = 'client_config'
 
-    def __str__(self):
-        return f"{self.client.name} Subscription"

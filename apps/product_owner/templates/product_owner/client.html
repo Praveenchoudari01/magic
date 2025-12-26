@@ -40,9 +40,10 @@
                     <th>Email</th>
                     <th>Mobile</th>
                     <th>Address</th>
-                    <th>Subscription</th>
+                    <th>Subscription Details</th>
                     <th>Status</th>
                     <th>Actions</th>
+                    <th>Subscription</th>
                 </tr>
             </thead>
             <tbody>
@@ -59,18 +60,12 @@
                             <p class="line">No of devices  <span>{{ client.subscription.no_of_devices }}</span></p>
                             <p class="line">No of processes  <span>{{ client.subscription.no_of_processes }}</span></p>
                             <p class="line">No of Operators  <span>{{ client.subscription.no_of_operators }}</span></p>
-                            <a href="{% url 'product_owner:manage_client_subscription' client.client_id %}" style="text-decoration: none;">
-                                Manage
-                            </a>
                         </td>
                     {% else %}
                         <td>
                             <p class="line">No of devices  <span>0</span></p>
                             <p class="line">No of processes  <span>0</span></p>
                             <p class="line">No of Operators  <span>0</span></p>
-                            <a href="{% url 'product_owner:manage_client_subscription' client.client_id %}" style="text-decoration: none;">
-                                Add
-                            </a>
                         </td>
                     {% endif %}
                     <td data-export="{{ client.is_active|yesno:'Active,Inactive' }}">
@@ -93,10 +88,24 @@
                             </a>
                         {% endif %}
                     </td>
+                    {% if client.subscription %}
+                        <td>
+                            <a href="{% url 'product_owner:manage_client_subscription' client.client_id %}" style="text-decoration: none;">
+                                Manage
+                            </a>
+                        </td>
+                    {% else %}
+                        <td>
+                            <a href="{% url 'product_owner:manage_client_subscription' client.client_id %}" style="text-decoration: none;">
+                                Add
+                            </a>
+                        </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr>
                     <td class="text-center" colspan="9">No Clients Added Yet</td>
+                    <td></td>
                     <td></td>
                     <td></td>
                     <td></td>
