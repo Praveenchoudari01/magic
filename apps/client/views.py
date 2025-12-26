@@ -401,7 +401,7 @@ def vr_device_list_view(request):
         messages.error(request, "User or client not found.")
         return redirect('client:client_home')
 
-    devices = VRDevice.objects.filter(client=client).order_by('-created_at')
+    devices = VRDevice.objects.filter(client=client).order_by('id')
     toast = request.session.pop("toast", None)
 
     return render(request, 'client/vr_device.html', {'devices': devices, 'toast' : toast})
@@ -977,7 +977,7 @@ def step_content_details(request, content_id):
     content_type = content.get_content_type_display()
 
     # Get all detail rows for this StepContent
-    details = StepContentDetail.objects.filter(step_content=content).order_by('-created_at')
+    details = StepContentDetail.objects.filter(step_content=content).order_by('id')
 
     # Annotate clean file name
     for d in details:
@@ -1286,7 +1286,7 @@ def update_step_content_detail(request, detail_id):
 
 def voice_over_list(request, detail_id):
     detail = get_object_or_404(StepContentDetail, pk=detail_id)
-    voice_overs = StepContentVoiceOver.objects.filter(step_content_detail=detail)
+    voice_overs = StepContentVoiceOver.objects.filter(step_content_detail=detail).order_by("id")
     toast = request.session.pop("toast", None)
     return render(request, "client/process/voice_over_list.html", {
         "detail": detail,
@@ -1609,7 +1609,7 @@ def caption_list(request, detail_id):
 
     captions = StepContentCaptions.objects.filter(
         step_content_voice_over_id=detail.step_content_detail_id
-    )
+    ).order_by("id")
 
     # Add filename attribute to each caption
     for c in captions:
@@ -1936,7 +1936,7 @@ def operator_process_list(request, process_id):
         OperatorProcess.objects
         .filter(process_id=process_id)
         .select_related('operator')
-    )
+    ).order_by("id")
 
     context = {
         "process": process,
@@ -2028,7 +2028,6 @@ def update_mapping(request, mapping_id):
     if "user_id" not in request.session:
         return redirect("accounts:login")
     
-    toast = request.session.pop("toast", None)
 
     # Get the existing mapping
     mapping = get_object_or_404(OperatorProcess, operator_process_id=mapping_id)

@@ -71,7 +71,7 @@ class HeaderAuthMiddleware(BaseHTTPMiddleware):
                 """
                 SELECT 1
                 FROM vr_device
-                WHERE client_id = %s AND device_id = %s
+                WHERE client_id = %s AND device_id = %s AND is_active = 1
                 """,
                 (client_id, device_id)
             )

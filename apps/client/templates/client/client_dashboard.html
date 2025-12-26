@@ -259,7 +259,8 @@
   {% if toast %}
 <div class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 9999;">
     <div id="fileToast"
-         class="toast fade glass-toast glass-slide align-items-center text-bg-{{ toast.type }} border-0"
+        class="toast fade glass-toast glass-slide align-items-center text-bg-{{ toast.type }} border-0"
+        style="max-width: 1000px;"
         role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
             <div class="toast-body">
