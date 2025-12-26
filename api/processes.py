@@ -93,9 +93,20 @@ def get_processes(
         processes_rows = cursor.fetchall()
 
         processes = []
-
+        print("process data retrived")
         for process in processes_rows:
 
+             # 1️⃣ Count steps
+            cursor.execute("""
+                SELECT COUNT(*) AS step_count
+                FROM steps
+                WHERE process_id = %s AND is_active = 1
+            """, (process["process_id"],))
+
+            step_count = cursor.fetchone()["step_count"]
+            if step_count != process["no_of_steps"]:
+                continue 
+            
             # Fetch steps for this process
             step_query = """
                 SELECT step_id, step_name, step_desc, est_step_time, step_sr_no, updated_at
@@ -111,7 +122,6 @@ def get_processes(
             for step in steps_rows:
                 
                 step_id = step['step_id']
-                print("step id is ",step_id)
 
                 step_content_query = """
                     SELECT step_content_id, name, content_type, updated_at
@@ -127,7 +137,6 @@ def get_processes(
                 for step_content in step_conent_rows:
                     
                     step_content_id = step_content["step_content_id"]
-                    print("step content_id is ",step_content_id)
 
                     step_content_details_query = """ 
                         SELECT step_content_detail_id, content_language_id, file_url, duration_or_no_pages, updated_at
@@ -143,7 +152,6 @@ def get_processes(
                     for content_details in step_content_details_rows:
 
                         step_content_detail_id = content_details['step_content_detail_id']
-                        print("step_content_detail_id is ", step_content_detail_id)
 
                         voice_over_query = """ 
                             SELECT step_content_voice_over_id, voice_over_file_type, language_id, language, file_url, updated_at
@@ -276,9 +284,9 @@ async def receive_session_data(
                 session["client_id"],
                 session["process_id"],
                 session["start_time"],
-                session["end_time"],
+                session["end_time"] or None,
                 session["total_time"],
-                session["status"]
+                session["status"] or None
             ))
 
             operator_session_db_id = cursor.lastrowid
@@ -300,7 +308,7 @@ async def receive_session_data(
                     step["session_id"],
                     step["step_sr_no"],
                     step["started_at"],
-                    step["ended_at"],
+                    step["ended_at"]  or None,
                     step["time_spent_sec"],
                     str(step["content_used"]),
                     session["client_id"],
@@ -326,7 +334,7 @@ async def receive_session_data(
                         content["usage_id"],
                         content["step_content_type"],
                         content["opened_at"],
-                        content["closed_at"],
+                        content["closed_at"]  or None,
                         content["duration"],
                         session["client_id"],
                         step["step_session_id"],  # payload value
